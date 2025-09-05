@@ -4,9 +4,17 @@ import (
     "fmt"
     "flag"
     "log"
+    "log/slog"
+    "net"
     "net/http"
     "os"
+    "strconv"
+    "strings"
+    "sync"
     "time"
+
+    "github.com/google/uuid"
+    "golang.org/x/time/rate"
 
     "gpsnav/internal/api"
     "gpsnav/internal/metrics"
@@ -93,9 +101,10 @@ func main() {
         addr = ":" + v
     }
 
+    handler := logMiddleware(requestIDMiddleware(corsMiddleware(rateLimitMiddleware(mux))))
     srv := &http.Server{
         Addr:              addr,
-        Handler:           logMiddleware(mux),
+        Handler:           handler,
         ReadHeaderTimeout: 5 * time.Second,
     }
 
@@ -119,11 +128,19 @@ func (w *statusWriter) WriteHeader(code int) { w.status = code; w.ResponseWriter
 func logMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         start := time.Now()
-        sw, ok := w.(*statusWriter)
-        if !ok { sw = &statusWriter{ResponseWriter: w, status: 200} } else { sw.status = 200 }
+        sw := &statusWriter{ResponseWriter: w, status: 200}
         next.ServeHTTP(sw, r)
         dur := time.Since(start)
-        log.Printf("%s %s %s %v", r.RemoteAddr, r.Method, r.URL.Path, dur)
+        rid := r.Header.Get("X-Request-Id")
+        logger := slog.Default()
+        logger.Info("http_request",
+            slog.String("method", r.Method),
+            slog.String("path", r.URL.Path),
+            slog.String("client", clientIP(r)),
+            slog.Int("status", sw.status),
+            slog.String("dur", dur.String()),
+            slog.String("request_id", rid),
+        )
         // record metrics
         st := fmt.Sprintf("%d", sw.status)
         metrics.HTTPRequests.WithLabelValues(r.Method, r.URL.Path, st).Inc()
@@ -133,3 +150,88 @@ func logMiddleware(next http.Handler) http.Handler {
 
 // Helper to satisfy reference and avoid unused imports in stubs
 var _ = fmt.Sprintf
+
+// ---- Request ID middleware ----
+func requestIDMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        rid := r.Header.Get("X-Request-Id")
+        if rid == "" { rid = uuid.New().String() }
+        w.Header().Set("X-Request-Id", rid)
+        // propagate on request for downstream
+        r.Header.Set("X-Request-Id", rid)
+        next.ServeHTTP(w, r)
+    })
+}
+
+// ---- CORS middleware ----
+func corsMiddleware(next http.Handler) http.Handler {
+    allowed := strings.Split(strings.TrimSpace(os.Getenv("ALLOW_ORIGINS")), ",")
+    allowAll := false
+    m := map[string]struct{}{}
+    for _, o := range allowed {
+        o = strings.TrimSpace(o)
+        if o == "" { continue }
+        if o == "*" { allowAll = true }
+        m[o] = struct{}{}
+    }
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        origin := r.Header.Get("Origin")
+        if allowAll && origin != "" { w.Header().Set("Access-Control-Allow-Origin", origin) }
+        if !allowAll {
+            if _, ok := m[origin]; ok && origin != "" {
+                w.Header().Set("Access-Control-Allow-Origin", origin)
+            }
+        }
+        w.Header().Set("Vary", "Origin")
+        if r.Method == http.MethodOptions {
+            w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
+            w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Request-Id,X-Tenant-Id,X-Role,X-Driver-Id")
+            w.WriteHeader(http.StatusNoContent)
+            return
+        }
+        next.ServeHTTP(w, r)
+    })
+}
+
+// ---- Rate limit middleware ----
+type rlStore struct {
+    mu sync.Mutex
+    m  map[string]*rate.Limiter
+    r  rate.Limit
+    b  int
+}
+
+func newRLStore(rps rate.Limit, burst int) *rlStore { return &rlStore{m: map[string]*rate.Limiter{}, r: rps, b: burst} }
+func (s *rlStore) limiter(key string) *rate.Limiter {
+    s.mu.Lock(); defer s.mu.Unlock()
+    if lm := s.m[key]; lm != nil { return lm }
+    lm := rate.NewLimiter(s.r, s.b)
+    s.m[key] = lm
+    return lm
+}
+
+func rateLimitMiddleware(next http.Handler) http.Handler {
+    rps := 20.0
+    burst := 40
+    if v := os.Getenv("RATE_RPS"); v != "" { if x, err := strconv.ParseFloat(v, 64); err == nil && x > 0 { rps = x } }
+    if v := os.Getenv("RATE_BURST"); v != "" { if x, err := strconv.Atoi(v); err == nil && x > 0 { burst = x } }
+    store := newRLStore(rate.Limit(rps), burst)
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        ip := clientIP(r)
+        if !store.limiter(ip).Allow() {
+            http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+            return
+        }
+        next.ServeHTTP(w, r)
+    })
+}
+
+func clientIP(r *http.Request) string {
+    if xf := r.Header.Get("X-Forwarded-For"); xf != "" {
+        parts := strings.Split(xf, ",")
+        return strings.TrimSpace(parts[0])
+    }
+    host, _, err := net.SplitHostPort(r.RemoteAddr)
+    if err == nil { return host }
+    return r.RemoteAddr
+}

@@ -1,0 +1,71 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "HTTP Requests",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "targets": [{
+        "expr": "sum(rate(http_requests_total[5m]))",
+        "legendFormat": "requests/s"
+      }],
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "Webhook Deliveries",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "targets": [{
+        "expr": "sum(increase(webhook_deliveries_total[5m]))",
+        "legendFormat": "5m"
+      }],
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0}
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Duration (p95)",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+        "legendFormat": "p95"
+      }],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6}
+    },
+    {
+      "type": "timeseries",
+      "title": "Webhook Latency (ms)",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum(rate(webhook_delivery_latency_ms_bucket[5m])) by (le,event_type))",
+        "legendFormat": "{{event_type}} p95"
+      }],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6}
+    },
+    {
+      "type": "bargauge",
+      "title": "HTTP Status Codes",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "targets": [{
+        "expr": "sum by (status) (increase(http_requests_total[5m]))",
+        "legendFormat": "{{status}}"
+      }],
+      "gridPos": {"h": 6, "w": 10, "x": 0, "y": 14}
+    },
+    {
+      "type": "bargauge",
+      "title": "Webhook Outcomes",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "targets": [{
+        "expr": "sum by (event_type,status) (increase(webhook_deliveries_total[5m]))",
+        "legendFormat": "{{event_type}} {{status}}"
+      }],
+      "gridPos": {"h": 6, "w": 14, "x": 10, "y": 14}
+    }
+  ],
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "title": "GPSNav API Metrics",
+  "version": 1
+}
