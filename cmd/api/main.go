@@ -9,6 +9,8 @@ import (
     "time"
 
     "gpsnav/internal/api"
+    "gpsnav/internal/metrics"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -57,6 +59,9 @@ func main() {
     // Docs / OpenAPI
     mux.HandleFunc("/openapi.yaml", srvDeps.OpenAPIHandler)
     mux.HandleFunc("/docs", srvDeps.DocsHandler)
+    // Metrics
+    metrics.RegisterDefault()
+    mux.Handle("/metrics", promhttp.Handler())
 
     // Admin
     mux.HandleFunc("/v1/admin/webhook-deliveries", srvDeps.WebhookDeliveriesHandler)
@@ -105,12 +110,24 @@ func main() {
     }
 }
 
+type statusWriter struct {
+    http.ResponseWriter
+    status int
+}
+func (w *statusWriter) WriteHeader(code int) { w.status = code; w.ResponseWriter.WriteHeader(code) }
+
 func logMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         start := time.Now()
-        next.ServeHTTP(w, r)
+        sw, ok := w.(*statusWriter)
+        if !ok { sw = &statusWriter{ResponseWriter: w, status: 200} } else { sw.status = 200 }
+        next.ServeHTTP(sw, r)
         dur := time.Since(start)
         log.Printf("%s %s %s %v", r.RemoteAddr, r.Method, r.URL.Path, dur)
+        // record metrics
+        st := fmt.Sprintf("%d", sw.status)
+        metrics.HTTPRequests.WithLabelValues(r.Method, r.URL.Path, st).Inc()
+        metrics.HTTPDuration.WithLabelValues(r.Method, r.URL.Path, st).Observe(dur.Seconds())
     })
 }
 

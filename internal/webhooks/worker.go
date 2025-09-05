@@ -9,6 +9,7 @@ import (
     "gpsnav/internal/store"
     "os"
     "strconv"
+    "gpsnav/internal/metrics"
 )
 
 type Worker struct {
@@ -65,8 +66,15 @@ func (w *Worker) processOnce() {
         }
         lastErr := ""
         if !success && err != nil { lastErr = err.Error() }
+        // Metrics
+        status := "retry"
+        if success { status = "delivered" }
+        metrics.WebhookDeliveries.WithLabelValues(it.EventType, status).Inc()
+        metrics.WebhookLatency.WithLabelValues(it.EventType, status).Observe(float64(latency))
         if !success && it.Attempts+1 >= w.MaxAttempts {
             _ = w.Store.FailWebhookDelivery(ctx, it.ID, lastErr, code, latency)
+            metrics.WebhookDeliveries.WithLabelValues(it.EventType, "failed").Inc()
+            metrics.WebhookLatency.WithLabelValues(it.EventType, "failed").Observe(float64(latency))
             continue
         }
         _ = w.Store.MarkWebhookDelivery(ctx, it.ID, success, &next, lastErr, code, latency)
