@@ -78,6 +78,24 @@ func TestRoutesIndexAndGraphQL(t *testing.T) {
     req.Header.Set("Content-Type", "application/json")
     s.GraphQLHTTPHandler(rr, req)
     if rr.Code != 200 { t.Fatalf("graphql routes: %d", rr.Code) }
+
+    // GraphQL: route(id)
+    // decode first route id via REST index
+    rr2 := httptest.NewRecorder()
+    s.RoutesIndexHandler(rr2, httptest.NewRequest(http.MethodGet, "/v1/routes", nil))
+    var idx struct{ Items []struct{ ID string `json:"id"` } `json:"items"` }
+    if err := json.Unmarshal(rr2.Body.Bytes(), &idx); err == nil && len(idx.Items) > 0 {
+        rid := idx.Items[0].ID
+        qb, _ := json.Marshal(map[string]any{
+            "query":     "query($id: ID!) { route(id: $id) }",
+            "variables": map[string]any{"id": rid},
+        })
+        rr = httptest.NewRecorder()
+        req = httptest.NewRequest(http.MethodPost, "/graphql", bytes.NewReader(qb))
+        req.Header.Set("Content-Type", "application/json")
+        s.GraphQLHTTPHandler(rr, req)
+        if rr.Code != 200 { t.Fatalf("graphql route: %d", rr.Code) }
+    }
 }
 
 func TestAssignAdvanceEnqueuesWebhook(t *testing.T) {
