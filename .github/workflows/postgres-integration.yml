@@ -1,13 +1,16 @@
 name: Postgres Integration
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main ]
+    tags: [ 'v*' ]
   pull_request:
+    types: [opened, reopened, synchronize, labeled]
     branches: [ main ]
 
 jobs:
   pg-int:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'pg-integration'))
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -45,4 +48,3 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/gpsnav?sslmode=disable
         run: go test -tags postgres_integration ./internal/store -v
-
