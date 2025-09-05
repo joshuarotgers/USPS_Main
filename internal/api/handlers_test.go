@@ -77,3 +77,63 @@ func TestRoutesIndexAndGraphQL(t *testing.T) {
     s.GraphQLHTTPHandler(rr, req)
     if rr.Code != 200 { t.Fatalf("graphql routes: %d", rr.Code) }
 }
+
+func TestAssignAdvanceEnqueuesWebhook(t *testing.T) {
+    s := newTestServer(t)
+    // Create subscription for stop.advanced
+    subBody := []byte(`{"tenantId":"t_test","url":"https://example.invalid/webhook","events":["stop.advanced"],"secret":"shh"}`)
+    rr := httptest.NewRecorder()
+    req := httptest.NewRequest(http.MethodPost, "/v1/subscriptions", bytes.NewReader(subBody))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("X-Tenant-Id", "t_test")
+    req.Header.Set("X-Role", "admin")
+    s.SubscriptionsHandler(rr, req)
+    if rr.Code != http.StatusCreated { t.Fatalf("create sub: %d", rr.Code) }
+
+    // Optimize to get a route
+    oreq := map[string]any{"tenantId":"t_test","planDate":"2024-01-01","algorithm":"greedy"}
+    ob,_ := json.Marshal(oreq)
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodPost, "/v1/optimize", bytes.NewReader(ob))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("X-Role", "admin")
+    s.OptimizeHandler(rr, req)
+    if rr.Code != 200 { t.Fatalf("optimize: %d", rr.Code) }
+    var ores struct{ Routes []struct{ ID string `json:"id"` } `json:"routes"` }
+    if err := json.Unmarshal(rr.Body.Bytes(), &ores); err != nil { t.Fatalf("decode optimize: %v", err) }
+    if len(ores.Routes) == 0 { t.Fatalf("no routes returned") }
+    rid := ores.Routes[0].ID
+
+    // Assign route
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodPost, "/v1/routes/"+rid+"/assign", bytes.NewReader([]byte(`{"driverId":"drv1","vehicleId":"veh1"}`)))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("X-Tenant-Id", "t_test")
+    req.Header.Set("X-Role", "admin")
+    s.RouteByIDHandler(rr, req)
+    if rr.Code != 200 { t.Fatalf("assign: %d", rr.Code) }
+
+    // Advance route (should emit webhook delivery)
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodPost, "/v1/routes/"+rid+"/advance", bytes.NewReader([]byte(`{}`)))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("X-Tenant-Id", "t_test")
+    req.Header.Set("X-Role", "admin")
+    s.RouteByIDHandler(rr, req)
+    if rr.Code != 200 { t.Fatalf("advance: %d", rr.Code) }
+
+    // List admin deliveries; expect at least one stop.advanced item
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodGet, "/v1/admin/webhook-deliveries?limit=5", nil)
+    req.Header.Set("X-Tenant-Id", "t_test")
+    req.Header.Set("X-Role", "admin")
+    s.WebhookDeliveriesHandler(rr, req)
+    if rr.Code != 200 { t.Fatalf("deliveries: %d", rr.Code) }
+    var dres struct{ Items []map[string]any `json:"items"` }
+    if err := json.Unmarshal(rr.Body.Bytes(), &dres); err != nil { t.Fatalf("decode deliveries: %v", err) }
+    if len(dres.Items) == 0 { t.Fatalf("expected at least one delivery") }
+    // optional check type
+    if et, ok := dres.Items[0]["eventType"].(string); ok && et == "" {
+        t.Fatalf("eventType should not be empty")
+    }
+}
