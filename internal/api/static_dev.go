@@ -17,7 +17,7 @@ func (s *Server) StaticHandler(w http.ResponseWriter, r *http.Request) {
         p := filepath.Join(base, name)
         if _, err := os.Stat(p); err != nil { http.NotFound(w, r); return }
         http.ServeFile(w, r, p)
-    case "driver.js", "driver.css":
+    case "driver.js", "driver.css", "driver-sw.js", "manifest.json":
         p := filepath.Join(base, name)
         if _, err := os.Stat(p); err != nil { http.NotFound(w, r); return }
         http.ServeFile(w, r, p)

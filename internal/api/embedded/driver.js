@@ -52,14 +52,20 @@
   loadCfg();
 
   // Active routes for driver
-  $('#refreshRoutes').onclick = async ()=>{
+  async function refreshRoutes(){
     const d = $('#driverId').value.trim(); if(!d) return;
-    const res = await get(`/v1/drivers/${encodeURIComponent(d)}/routes`);
+    const res = await get(`/v1/drivers/${encodeURIComponent(d)}/routes/summary`);
     const ul = $('#routesList'); ul.innerHTML='';
-    (res.items||[]).forEach(id=>{
-      const li=document.createElement('li'); const a=document.createElement('a'); a.href='#'; a.textContent=id; a.onclick=(e)=>{e.preventDefault(); $('#routeId').value=id; $('#loadRoute').click();}; li.appendChild(a); ul.appendChild(li);
+    (res.items||[]).forEach(it=>{
+      const li=document.createElement('li');
+      const a=document.createElement('a'); a.href='#'; a.textContent=it.id; a.onclick=(e)=>{e.preventDefault(); $('#routeId').value=it.id; $('#loadRoute').click();};
+      const st=document.createElement('span'); st.className='pill'; st.textContent=it.status||'';
+      li.appendChild(st); li.appendChild(a);
+      if (it.next && it.next.toStopId){ const ns=document.createElement('span'); ns.style.marginLeft='6px'; ns.textContent=`→ ${it.next.toStopId}`; li.appendChild(ns); }
+      ul.appendChild(li);
     });
   }
+  $('#refreshRoutes').onclick = refreshRoutes;
 
   function renderNextStop(route){
     try{
@@ -100,7 +106,7 @@
   }
 
   // Periodic auto-refresh of routes list and SSE reconnect
-  setInterval(()=>{ if ($('#autoRefresh').checked) { $('#refreshRoutes').click(); if (!es) $('#connectSSE').click(); } }, 15000);
+  setInterval(()=>{ if ($('#autoRefresh').checked) { refreshRoutes(); if (!es) $('#connectSSE').click(); } }, 15000);
 
   // PoD submission
   document.getElementById('btnPod').onclick = async ()=>{

@@ -1,0 +1,9 @@
+{
+  "name": "GPSNav Driver App",
+  "short_name": "Driver",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111"
+}
+
