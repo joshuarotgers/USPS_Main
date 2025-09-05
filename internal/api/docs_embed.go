@@ -4,8 +4,7 @@ package api
 
 import _ "embed"
 
-//go:embed ../../openapi/openapi.yaml
+//go:embed embedded/openapi.yaml
 var openAPIEmbedded []byte
 
 func openAPILoad() ([]byte, error) { return openAPIEmbedded, nil }
-
