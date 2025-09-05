@@ -1,0 +1,33 @@
+Health:
+{
+  "status": "ok"
+}
+
+Docs head:
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Vary: Origin
+X-Request-Id: 698049ed-eb1d-4277-baf3-02cff174fa83
+Date: Fri, 05 Sep 2025 22:41:44 GMT
+
+Metrics sample:
+# HELP go_gc_duration_seconds A summary of the wall-time pause (stop-the-world) duration in garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 3.7995e-05
+go_gc_duration_seconds{quantile="0.25"} 3.7995e-05
+go_gc_duration_seconds{quantile="0.5"} 3.7995e-05
+go_gc_duration_seconds{quantile="0.75"} 3.7995e-05
+go_gc_duration_seconds{quantile="1"} 3.7995e-05
+go_gc_duration_seconds_sum 3.7995e-05
+go_gc_duration_seconds_count 1
+# HELP go_gc_gogc_percent Heap size target percentage configured by the user, otherwise 100. This value is set by the GOGC environment variable, and the runtime/debug.SetGCPercent function. Sourced from /gc/gogc:percent.
+curl: (23) Failure writing output to destination
+
+Optimize demo:
+{
+  "type": "about:blank",
+  "title": "Plan routes failed",
+  "status": 500,
+  "detail": "ERROR: relation \"stops\" does not exist (SQLSTATE 42P01)",
+  "instance": "/v1/optimize"
+}

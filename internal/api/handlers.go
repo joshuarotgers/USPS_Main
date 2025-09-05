@@ -431,6 +431,15 @@ func (s *Server) DriversHandler(w http.ResponseWriter, r *http.Request) {
     driverID := parts[0]
     action := strings.Join(parts[1:], "/")
 
+    // Listing active routes for a driver
+    if r.Method == http.MethodGet && action == "routes" {
+        _, tenant := s.withTenant(r)
+        ids, err := s.Store.ListActiveRoutesForDriver(r.Context(), tenant, driverID)
+        if err != nil { writeProblem(w, 500, "List routes failed", err.Error(), r.URL.Path); return }
+        writeJSON(w, 200, map[string]any{"items": ids})
+        return
+    }
+
     var ts time.Time
     var note, breakType string
     if r.Method == http.MethodPost {

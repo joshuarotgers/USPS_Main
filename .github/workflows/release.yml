@@ -39,10 +39,15 @@ jobs:
           # Build binary
           OUT_BIN="dist/${BIN}${EXT}"
           echo "Building $OUT_BIN"
-          # Ensure embedded OpenAPI asset is present
+          # Ensure embedded OpenAPI & Redoc assets are present
           mkdir -p internal/api/embedded
           cp openapi/openapi.yaml internal/api/embedded/openapi.yaml
-          go build -tags embed_openapi -trimpath -ldflags "-s -w" -o "$OUT_BIN" ./cmd/api
+          curl -fsSL https://cdn.jsdelivr.net/npm/redoc@2.1.4/bundles/redoc.standalone.js -o internal/api/embedded/redoc.standalone.js
+          curl -fsSL https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js -o internal/api/embedded/swagger-ui-bundle.js
+          curl -fsSL https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js -o internal/api/embedded/swagger-ui-standalone-preset.js
+          curl -fsSL https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css -o internal/api/embedded/swagger-ui.css
+          LD_FLAGS="-s -w -X gpsnav/internal/buildinfo.Version=$VER -X gpsnav/internal/buildinfo.BuiltAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          go build -tags embed_openapi -trimpath -ldflags "$LD_FLAGS" -o "$OUT_BIN" ./cmd/api
           # Staging directory with extras
           PKGDIR="dist/${BIN}_${VER}_${GOOS}_${GOARCH}"
           mkdir -p "$PKGDIR"

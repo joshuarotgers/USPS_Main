@@ -98,6 +98,47 @@ func TestRoutesIndexAndGraphQL(t *testing.T) {
     }
 }
 
+func TestDriverRoutesList(t *testing.T) {
+    s := newTestServer(t)
+    // create a route then assign to driver drv1
+    oreq := map[string]any{"tenantId":"t_test","planDate":"2024-01-01","algorithm":"greedy"}
+    b,_ := json.Marshal(oreq)
+    rr := httptest.NewRecorder()
+    req := httptest.NewRequest(http.MethodPost, "/v1/optimize", bytes.NewReader(b))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("X-Tenant-Id", "t_test")
+    req.Header.Set("X-Role", "admin")
+    s.OptimizeHandler(rr, req)
+    if rr.Code != 200 { t.Fatalf("optimize: %d", rr.Code) }
+    var ores struct{ Routes []struct{ ID string `json:"id"` } `json:"routes"` }
+    _ = json.Unmarshal(rr.Body.Bytes(), &ores)
+    rid := ores.Routes[0].ID
+    // assign
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodPost, "/v1/routes/"+rid+"/assign", bytes.NewReader([]byte(`{"driverId":"drv1","vehicleId":"veh1"}`)))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("X-Tenant-Id", "t_test")
+    req.Header.Set("X-Role", "admin")
+    s.RouteByIDHandler(rr, req)
+    if rr.Code != 200 { t.Fatalf("assign: %d", rr.Code) }
+    // list driver routes
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodGet, "/v1/drivers/drv1/routes", nil)
+    req.Header.Set("X-Tenant-Id", "t_test")
+    s.DriversHandler(rr, req)
+    if rr.Code != 200 { t.Fatalf("list driver routes: %d", rr.Code) }
+}
+
+func TestPoDHandler(t *testing.T) {
+    s := newTestServer(t)
+    body := []byte(`{"tenantId":"t_test","orderId":"ord_1","stopId":"s1","type":"signature"}`)
+    rr := httptest.NewRecorder()
+    req := httptest.NewRequest(http.MethodPost, "/v1/pod", bytes.NewReader(body))
+    req.Header.Set("Content-Type", "application/json")
+    s.PoDHandler(rr, req)
+    if rr.Code != http.StatusCreated { t.Fatalf("pod: %d", rr.Code) }
+}
+
 func TestAssignAdvanceEnqueuesWebhook(t *testing.T) {
     s := newTestServer(t)
     // Create subscription for stop.advanced

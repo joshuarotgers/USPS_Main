@@ -34,6 +34,19 @@ Dev helpers:
 - Smoke (HTTP): `make smoke PORT=9099` — builds, runs a quick end-to-end script hitting core endpoints, webhooks, and admin views.
 - WS demo: `make ws-demo PORT=9099` — runs a small GraphQL WS client that subscribes to `routeEvents` and prints frames (expects server running on PORT).
 - One-shot WS demo: `make run-ws-demo PORT=9099` — starts the server, runs the WS client, then cleans up.
+- Dev loop (local):
+  - `make dev-here` — watch files; on change run `go build` + `go test` and a short smoke
+  - `make dev-afk` — periodically pull from `origin/main`, rebuild, hot-redeploy API via compose, and run smoke (logs in `logs/afk.log`)
+    - Add `AUTO_ACCEPT=true` to auto-commit/push to a temporary afk branch and (if GitHub CLI is available) open a PR with auto-merge enabled.
+      - Example: `AUTO_ACCEPT=true make dev-afk`
+    - Streaming options during AFK:
+      - `STREAM_FILE=logs/stream.jsonl` (default) — JSONL entries with `ts, commit, changed, status, base`
+      - `STREAM_WEBHOOK=<url>` — POST a brief summary to a webhook (e.g., Slack/Discord) each cycle
+      - `GH_COMMENT=true` — if a PR exists for the branch, comment updates using `gh` CLI
+    - Auto-accept target:
+      - default: commits go to an `afk-<host>/<branch>` and a PR is opened with auto-merge (if `gh` available)
+      - to push directly to the current branch (use with caution): `AUTO_ACCEPT_TARGET=main make dev-afk`
+  - `make dev-once` — one pass build + test + smoke
 
 ## Docker
 
@@ -43,7 +56,7 @@ Dev helpers:
 ### Docker Compose (with Postgres + Redis)
 
 - Start stack: `docker compose up --build`
- - API available at `http://localhost:8081` (compose maps host 8081 -> container 8080)
+ - API available at `http://localhost:8081` (and `http://localhost:8082`) — compose maps these host ports -> container 8080
 - Adjust env in `compose.yaml` as needed (DB/Redis URLs, PORT).
 
 Optional services included:

@@ -67,6 +67,12 @@ func main() {
     // Docs / OpenAPI
     mux.HandleFunc("/openapi.yaml", srvDeps.OpenAPIHandler)
     mux.HandleFunc("/docs", srvDeps.DocsHandler)
+    // Static assets (Redoc/Swagger/Driver App)
+    mux.HandleFunc("/static/", srvDeps.StaticHandler)
+    mux.HandleFunc("/app", srvDeps.StaticHandler)
+    mux.HandleFunc("/app/", srvDeps.StaticHandler)
+    // Debug JSON
+    mux.HandleFunc("/debug", srvDeps.DebugJSON)
     // Root: simple index page with links
     mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
         if r.URL.Path != "/" { http.NotFound(w, r); return }
@@ -79,6 +85,8 @@ func main() {
           <li><a href="/readyz">/readyz</a> — readiness</li>
           <li><a href="/docs">/docs</a> — OpenAPI docs</li>
           <li><a href="/metrics">/metrics</a> — Prometheus metrics</li>
+          <li><a href="/swagger">/swagger</a> — Interactive API Console</li>
+          <li><a href="/app">/app</a> — Driver App</li>
         </ul>
         </body></html>`))
     })
@@ -110,6 +118,8 @@ func main() {
     mux.HandleFunc("/graphql/ws", srvDeps.GraphQLWSHandler)
     // Minimal GraphQL HTTP endpoint (queries)
     mux.HandleFunc("/graphql", srvDeps.GraphQLHTTPHandler)
+    // Swagger UI interactive console
+    mux.HandleFunc("/swagger", srvDeps.SwaggerHandler)
 
     addr := ":8080"
     if v := os.Getenv("PORT"); v != "" {

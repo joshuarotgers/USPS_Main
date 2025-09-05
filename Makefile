@@ -1,5 +1,6 @@
 APP_NAME=api
 PORT?=8080
+AUTO_ACCEPT?=true
 
 .PHONY: build run smoke ws-demo run-ws-demo
 
@@ -28,3 +29,13 @@ run-ws-demo: build
 	kill $$PID >/dev/null 2>&1 || true; \
 	wait $$PID >/dev/null 2>&1 || true; \
 	echo "WS demo done. Logs: /tmp/api_ws_demo.log";
+
+.PHONY: dev-here dev-afk dev-once
+dev-here:
+	SMOKE=true bash ./scripts/devloop.sh here
+
+dev-afk:
+	SMOKE=true AUTO_ACCEPT=$(AUTO_ACCEPT) bash ./scripts/devloop.sh afk
+
+dev-once:
+	SMOKE=true bash ./scripts/devloop.sh once

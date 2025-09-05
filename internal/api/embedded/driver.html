@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Driver App</title>
+  <link rel="stylesheet" href="/static/driver.css" />
+</head>
+<body>
+  <header>
+    <h1>Driver App</h1>
+    <nav><a href="/">Home</a> · <a href="/docs" target="_blank">Docs</a> · <a href="/swagger" target="_blank">API Console</a></nav>
+  </header>
+  <section id="auth">
+    <h2>Settings</h2>
+    <label>Tenant <input id="tenant" placeholder="t_demo"/></label>
+    <label>Driver ID <input id="driverId" placeholder="drv1"/></label>
+    <label><input type="checkbox" id="devToken" checked/> Use dev token (tenant:driver)</label>
+    <button id="save">Save</button>
+  </section>
+  <section id="hos">
+    <h2>HOS</h2>
+    <button data-action="shift/start">Shift Start</button>
+    <button data-action="shift/end">Shift End</button>
+    <button data-action="breaks/start">Break Start</button>
+    <button data-action="breaks/end">Break End</button>
+    <pre id="hosOut"></pre>
+  </section>
+  <section id="myRoutes">
+    <h2>My Active Routes</h2>
+    <button id="refreshRoutes">Refresh</button>
+    <ul id="routesList"></ul>
+  </section>
+  <section id="route">
+    <h2>Route</h2>
+    <label>Route ID <input id="routeId" placeholder="route_123"/></label>
+    <button id="loadRoute">Load</button>
+    <button id="connectSSE">Connect Events</button>
+    <label style="margin-left:10px"><input type="checkbox" id="autoRefresh" checked/> Auto-refresh list/events</label>
+    <div>
+      <label>Advance reason
+        <select id="reason">
+          <option value="">(none)</option>
+          <option value="depart">depart</option>
+          <option value="arrive">arrive</option>
+          <option value="pod">pod</option>
+        </select>
+      </label>
+      <button id="advance">Advance</button>
+    </div>
+    <div id="nextStop" class="card" style="display:none"></div>
+    <pre id="routeOut"></pre>
+  </section>
+  <section id="pod">
+    <h2>Proof of Delivery</h2>
+    <div>
+      <label>Order ID <input id="podOrderId" placeholder="ord_123"/></label>
+      <label>Stop ID <input id="podStopId" placeholder="(auto from next stop)"/></label>
+      <label>Type
+        <select id="podType">
+          <option value="signature">signature</option>
+          <option value="photo">photo</option>
+          <option value="note">note</option>
+        </select>
+      </label>
+    </div>
+    <div>
+      <input type="file" id="podFile"/>
+      <button id="btnPod">Submit PoD</button>
+    </div>
+    <small>Note: Demo uploads call /v1/pod with metadata; presigned upload is mocked.</small>
+    <pre id="podOut"></pre>
+  </section>
+  <section id="events">
+    <h2>Events</h2>
+    <pre id="eventsOut"></pre>
+  </section>
+  <script src="/static/driver.js"></script>
+</body>
+</html>

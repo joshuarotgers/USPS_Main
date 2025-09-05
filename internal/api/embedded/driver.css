@@ -1,0 +1,12 @@
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;padding:0;background:#f8f9fa;color:#222}
+header{background:#111;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:16px}
+header h1{font-size:18px;margin:0}
+header nav a{color:#9ad; margin-right:8px}
+section{background:#fff;margin:12px;border:1px solid #e2e3e5;border-radius:6px;padding:12px}
+label{display:inline-flex;align-items:center;margin-right:12px}
+label input, select{margin-left:6px}
+button{margin:4px 6px}
+pre{background:#f3f4f6;border:1px solid #ddd;padding:8px;max-height:240px;overflow:auto}
+.card{border:1px solid #cbd5e1;background:#eef2ff;padding:10px;border-radius:6px;margin:8px 0}
+.card h3{margin:4px 0}
+.pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#e2e8f0;margin-right:6px}

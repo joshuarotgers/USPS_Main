@@ -4,8 +4,14 @@ info:
   version: 0.1.0
   description: Core REST endpoints for orders, optimization, routes, driver events, PoD, and webhooks.
 servers:
-  - url: https://api.example.com
+  - url: http://localhost:8081
+    description: Local Docker (compose)
+  - url: http://localhost:8082
+    description: Local Docker (compose alt)
   - url: http://localhost:8080
+    description: Local direct (make run)
+  - url: https://api.example.com
+    description: Production (example)
 tags:
   - name: Orders
   - name: Optimization
