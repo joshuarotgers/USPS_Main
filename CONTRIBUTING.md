@@ -18,6 +18,7 @@ Thanks for considering a contribution! This repo contains a Go backend API scaff
 Environment:
 - `DATABASE_URL` to enable Postgres store (else memory store is used)
 - `REDIS_URL` to enable Redis event broker (else in-memory broker)
+- `DB_MIGRATE=false` to disable auto-migrations on startup (or run `api -migrate=false`)
 
 ## Coding style
 
@@ -37,6 +38,18 @@ Environment:
 - Ensure smoke runs clean locally (`make smoke`)
 - Avoid committing secrets/tokens; use `.env` files locally
 
+### CI Workflows
+- Unit tests: run on pushes/PRs to `main`.
+- Smoke: end-to-end HTTP script runs on pushes/PRs.
+- Release: on tags `v*`, builds multi-arch binaries and uploads to GitHub Releases.
+- Docker publish: on tags `v*`, builds and pushes Docker images to Docker Hub.
+- Postgres integration tests:
+  - Opt-in. Trigger via:
+    - Manual run from Actions UI (workflow_dispatch), or
+    - Tag push `v*`, or
+    - Add PR label `pg-integration`.
+  - Locally, run: `go test -tags postgres_integration ./internal/store` with `DATABASE_URL` set.
+
 ## Security
 
 - Do not include secrets in code or logs
@@ -45,4 +58,3 @@ Environment:
 ## License
 
 - Unless stated otherwise, contributions are under the repo’s license
-

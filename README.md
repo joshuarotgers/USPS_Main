@@ -59,6 +59,16 @@ Sample unit and env file in `deploy/systemd/`:
 
 MIT — see `LICENSE`.
 
+## CI Overview
+
+- Smoke: runs an end-to-end HTTP script on pushes/PRs.
+- Tests: builds and runs `go test ./...` on pushes/PRs to `main`.
+- Releases: tag `v*` builds binaries for Linux/macOS/Windows and uploads to Releases.
+- Docker Publish: tag `v*` builds multi-arch images and pushes to Docker Hub.
+- Postgres Integration (opt-in):
+  - Run manually from Actions (workflow_dispatch), or for PRs labeled `pg-integration`, or on tag pushes `v*`.
+  - Locally: `go test -tags postgres_integration ./internal/store` with `DATABASE_URL`.
+
 Endpoints (stubbed):
 - `POST /v1/orders` — bulk import orders
 - `POST /v1/optimize` — plan/replan routes
