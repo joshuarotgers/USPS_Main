@@ -24,27 +24,43 @@ jobs:
         with:
           go-version: '1.24.x'
 
-      - name: Build ${{ matrix.goos }}-${{ matrix.goarch }}
+      - name: Build and package ${{ matrix.goos }}-${{ matrix.goarch }}
         env:
           CGO_ENABLED: 0
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
+          set -euo pipefail
           mkdir -p dist
           BIN=api
+          VER="${GITHUB_REF_NAME}"
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=.exe; fi
-          OUT="dist/${BIN}_${GOOS}_${GOARCH}${EXT}"
-          echo "Building $OUT"
-          go build -trimpath -ldflags "-s -w" -o "$OUT" ./cmd/api
-          # Package
+          # Build binary
+          OUT_BIN="dist/${BIN}${EXT}"
+          echo "Building $OUT_BIN"
+          go build -trimpath -ldflags "-s -w" -o "$OUT_BIN" ./cmd/api
+          # Staging directory with extras
+          PKGDIR="dist/${BIN}_${VER}_${GOOS}_${GOARCH}"
+          mkdir -p "$PKGDIR"
+          mv "$OUT_BIN" "$PKGDIR/"
+          cp -f README.md CHANGELOG.md "$PKGDIR/" 2>/dev/null || true
+          mkdir -p "$PKGDIR/configs" "$PKGDIR/openapi" "$PKGDIR/graphql"
+          cp -f configs/.env.example "$PKGDIR/configs/" 2>/dev/null || true
+          cp -f openapi/openapi.yaml "$PKGDIR/openapi/" 2>/dev/null || true
+          cp -f graphql/schema.graphql "$PKGDIR/graphql/" 2>/dev/null || true
+          # Package archive per OS
           if [ "$GOOS" = "windows" ]; then
-            (cd dist && zip -q "${BIN}_${GOOS}_${GOARCH}.zip" "${BIN}_${GOOS}_${GOARCH}${EXT}")
-            rm -f "$OUT"
+            ARCHIVE="dist/${BIN}_${VER}_${GOOS}_${GOARCH}.zip"
+            (cd dist && zip -qr "$(basename "$ARCHIVE")" "$(basename "$PKGDIR")")
           else
-            tar -C dist -czf "dist/${BIN}_${GOOS}_${GOARCH}.tar.gz" "${BIN}_${GOOS}_${GOARCH}${EXT}"
-            rm -f "$OUT"
+            ARCHIVE="dist/${BIN}_${VER}_${GOOS}_${GOARCH}.tar.gz"
+            tar -C dist -czf "$ARCHIVE" "$(basename "$PKGDIR")"
           fi
+          # Cleanup staging dir
+          rm -rf "$PKGDIR"
+          # Checksums
+          sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
 
       - name: Extract release notes from CHANGELOG
         id: notes
@@ -74,5 +90,6 @@ jobs:
           files: |
             dist/*.tar.gz
             dist/*.zip
+            dist/*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
