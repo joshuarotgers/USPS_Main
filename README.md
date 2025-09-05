@@ -52,6 +52,10 @@ Optional services included:
   - Datasource pre-provisioned to Prometheus
   - Dashboard auto-import path: `/var/lib/grafana/dashboards/dashboard-api.json` (maps from `grafana/dashboard-api.json`)
   - After `docker compose up`, open Grafana and verify the dashboard.
+- Loki + Promtail for logs:
+  - Loki at `http://localhost:3100`
+  - Promtail tails Docker container logs and ships to Loki (config in `configs/promtail-config.yml.example`)
+  - Add a Log panel in Grafana using the `Loki` datasource to explore logs.
 
 ### CORS, Rate Limiting, and Metrics
 
