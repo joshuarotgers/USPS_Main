@@ -1,3 +1,5 @@
+//go:build !embed_openapi
+
 package api
 
 import (
