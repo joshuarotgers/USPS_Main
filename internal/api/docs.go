@@ -1,16 +1,8 @@
-//go:build !embed_openapi
-
 package api
 
 import (
     "net/http"
-    "os"
 )
-
-// openAPILoad loads the OpenAPI bytes (dev default reads from disk).
-func openAPILoad() ([]byte, error) {
-    return os.ReadFile("openapi/openapi.yaml")
-}
 
 // OpenAPIHandler serves the OpenAPI spec
 func (s *Server) OpenAPIHandler(w http.ResponseWriter, r *http.Request) {
