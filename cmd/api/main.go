@@ -2,6 +2,7 @@ package main
 
 import (
     "fmt"
+    "flag"
     "log"
     "net/http"
     "os"
@@ -11,6 +12,9 @@ import (
 )
 
 func main() {
+    migrate := flag.Bool("migrate", true, "run DB migrations on startup (Postgres mode)")
+    flag.Parse()
+    if !*migrate { os.Setenv("DB_MIGRATE", "false") }
     srvDeps, err := api.NewServer()
     if err != nil {
         log.Fatalf("failed to init server: %v", err)

@@ -53,3 +53,27 @@ func TestOptimizeAndRoute(t *testing.T) {
     if rr.Code != 200 { t.Fatalf("optimize: %d", rr.Code) }
 }
 
+func TestRoutesIndexAndGraphQL(t *testing.T) {
+    s := newTestServer(t)
+    // seed a route
+    oreq := map[string]any{"tenantId":"t_test","planDate":"2024-01-01","algorithm":"greedy"}
+    b,_ := json.Marshal(oreq)
+    rr := httptest.NewRecorder()
+    req := httptest.NewRequest(http.MethodPost, "/v1/optimize", bytes.NewReader(b))
+    req.Header.Set("Content-Type", "application/json")
+    s.OptimizeHandler(rr, req)
+    if rr.Code != 200 { t.Fatalf("optimize: %d", rr.Code) }
+
+    // list routes
+    rr = httptest.NewRecorder()
+    s.RoutesIndexHandler(rr, httptest.NewRequest(http.MethodGet, "/v1/routes", nil))
+    if rr.Code != 200 { t.Fatalf("routes index: %d", rr.Code) }
+
+    // GraphQL: routes
+    var body = []byte(`{"query":"query { routes }"}`)
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodPost, "/graphql", bytes.NewReader(body))
+    req.Header.Set("Content-Type", "application/json")
+    s.GraphQLHTTPHandler(rr, req)
+    if rr.Code != 200 { t.Fatalf("graphql routes: %d", rr.Code) }
+}

@@ -5,9 +5,14 @@ import (
     "os"
 )
 
-// OpenAPIHandler serves the OpenAPI spec from the repository path (dev convenience)
+// openAPILoad loads the OpenAPI bytes (dev default reads from disk).
+func openAPILoad() ([]byte, error) {
+    return os.ReadFile("openapi/openapi.yaml")
+}
+
+// OpenAPIHandler serves the OpenAPI spec
 func (s *Server) OpenAPIHandler(w http.ResponseWriter, r *http.Request) {
-    b, err := os.ReadFile("openapi/openapi.yaml")
+    b, err := openAPILoad()
     if err != nil { writeProblem(w, 500, "OpenAPI not available", err.Error(), r.URL.Path); return }
     w.Header().Set("Content-Type", "application/yaml")
     w.WriteHeader(200)

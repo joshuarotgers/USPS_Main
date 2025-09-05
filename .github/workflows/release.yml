@@ -39,7 +39,7 @@ jobs:
           # Build binary
           OUT_BIN="dist/${BIN}${EXT}"
           echo "Building $OUT_BIN"
-          go build -trimpath -ldflags "-s -w" -o "$OUT_BIN" ./cmd/api
+          go build -tags embed_openapi -trimpath -ldflags "-s -w" -o "$OUT_BIN" ./cmd/api
           # Staging directory with extras
           PKGDIR="dist/${BIN}_${VER}_${GOOS}_${GOARCH}"
           mkdir -p "$PKGDIR"
