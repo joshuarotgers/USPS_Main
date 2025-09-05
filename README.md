@@ -46,6 +46,13 @@ Dev helpers:
 - API available at `http://localhost:8080`
 - Adjust env in `compose.yaml` as needed (DB/Redis URLs, PORT).
 
+Optional services included:
+- Prometheus at `http://localhost:9090` (scrapes API `/metrics`)
+- Grafana at `http://localhost:3000` (admin/admin by default)
+  - Datasource pre-provisioned to Prometheus
+  - Dashboard auto-import path: `/var/lib/grafana/dashboards/dashboard-api.json` (maps from `grafana/dashboard-api.json`)
+  - After `docker compose up`, open Grafana and verify the dashboard.
+
 ### CORS, Rate Limiting, and Metrics
 
 - CORS: set `ALLOW_ORIGINS` (comma-separated) or `*` to allow all.
