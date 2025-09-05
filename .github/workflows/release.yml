@@ -46,7 +46,7 @@ jobs:
           mv "$OUT_BIN" "$PKGDIR/"
           cp -f README.md CHANGELOG.md "$PKGDIR/" 2>/dev/null || true
           mkdir -p "$PKGDIR/configs" "$PKGDIR/openapi" "$PKGDIR/graphql"
-          cp -f configs/.env.example "$PKGDIR/configs/" 2>/dev/null || true
+          cp -f configs/*.example "$PKGDIR/configs/" 2>/dev/null || true
           cp -f openapi/openapi.yaml "$PKGDIR/openapi/" 2>/dev/null || true
           cp -f graphql/schema.graphql "$PKGDIR/graphql/" 2>/dev/null || true
           # Include Docker + systemd helpers and LICENSE

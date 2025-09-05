@@ -46,6 +46,27 @@ Dev helpers:
 - API available at `http://localhost:8080`
 - Adjust env in `compose.yaml` as needed (DB/Redis URLs, PORT).
 
+### CORS, Rate Limiting, and Metrics
+
+- CORS: set `ALLOW_ORIGINS` (comma-separated) or `*` to allow all.
+- Rate limit: per-IP with token bucket
+  - `RATE_RPS` (default 20), `RATE_BURST` (default 40)
+- Metrics: Prometheus endpoint at `GET /metrics` (Prometheus format)
+
+Prometheus scrape example (`configs/prometheus.yml.example`):
+
+```yaml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'gpsnav-api'
+    static_configs:
+      - targets: ['api:8080']   # or 'localhost:8080' if running locally
+```
+
+Grafana dashboard JSON is provided at `grafana/dashboard-api.json` — import it into Grafana and point it at your Prometheus datasource.
+
 ## Systemd
 
 Sample unit and env file in `deploy/systemd/`:
@@ -68,6 +89,22 @@ MIT — see `LICENSE`.
 - Postgres Integration (opt-in):
   - Run manually from Actions (workflow_dispatch), or for PRs labeled `pg-integration`, or on tag pushes `v*`.
   - Locally: `go test -tags postgres_integration ./internal/store` with `DATABASE_URL`.
+
+## Configuration Reference
+
+- Core:
+  - `PORT`: HTTP listen port (default 8080)
+  - `DATABASE_URL`: Postgres DSN to enable DB-backed store (if unset, in-memory)
+  - `DB_MIGRATE`: set to `false` to skip auto-migrations (or CLI `-migrate=false`)
+  - `REDIS_URL`: Redis URL to enable cross-process event broker (optional)
+- Auth:
+  - `AUTH_MODE`: `dev` | `hmac` | `jwks`
+  - `AUTH_HMAC_SECRET`, `AUTH_JWKS_URL`, `AUTH_TENANT_CLAIM`, `AUTH_ROLE_CLAIM`, `AUTH_DRIVER_CLAIM`
+- Webhooks:
+  - `WEBHOOK_MAX_ATTEMPTS`: max retries before DLQ
+- CORS/Rate limit:
+  - `ALLOW_ORIGINS`: `*` or comma-separated origins
+  - `RATE_RPS`, `RATE_BURST`: per-IP limits
 
 Endpoints (stubbed):
 - `POST /v1/orders` — bulk import orders
