@@ -1,8 +1,8 @@
 # Universal GPS Navigation & Delivery Optimization Platform
 
-[![Smoke](https://github.com/OWNER/REPO/actions/workflows/smoke.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/smoke.yml)
+[![Smoke](https://github.com/joshuarotgers/USPS_Main/actions/workflows/smoke.yml/badge.svg)](https://github.com/joshuarotgers/USPS_Main/actions/workflows/smoke.yml)
 
-Note: replace OWNER/REPO in the badge URL with your GitHub repo slug.
+Note: the badge links to this repository's Smoke workflow.
 
 This repository contains a foundational scaffold for a universal GPS navigation and delivery optimization platform designed for postal, courier, food, parcel, and freight operations.
 
