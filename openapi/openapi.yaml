@@ -1,0 +1,1154 @@
+openapi: 3.0.3
+info:
+  title: Universal GPS Navigation & Delivery Optimization API
+  version: 0.1.0
+  description: Core REST endpoints for orders, optimization, routes, driver events, PoD, and webhooks.
+servers:
+  - url: https://api.example.com
+  - url: http://localhost:8080
+tags:
+  - name: Orders
+  - name: Optimization
+  - name: Routes
+  - name: DriverEvents
+  - name: PoD
+  - name: Subscriptions
+  - name: AutoAdvance
+  - name: Drivers
+  - name: Geofences
+  - name: Media
+  - name: Health
+  - name: SubscriptionsAdmin
+  - name: WebhooksAdmin
+  - name: Metrics
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+paths:
+  /v1/orders:
+    post:
+      tags: [Orders]
+      summary: Bulk import orders
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string }
+          required: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderImportRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderImportResponse' }
+    get:
+      tags: [Orders]
+      summary: List orders
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: cursor
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderListResponse' }
+
+  /v1/optimize:
+    post:
+      tags: [Optimization]
+      summary: Plan or re-plan routes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OptimizeRequest' }
+      responses:
+        '200':
+          description: Planned routes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OptimizeResponse' }
+
+  /v1/routes/{routeId}:
+    get:
+      tags: [Routes]
+      summary: Get route by id
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: sinceVersion
+          schema: { type: integer }
+        - in: query
+          name: includeBreaks
+          schema: { type: boolean, default: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Route' }
+    patch:
+      tags: [Routes]
+      summary: Update route metadata
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: string }
+        - in: header
+          name: If-Match
+          schema: { type: string, example: 'W/"2"' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutePatch' }
+      responses:
+        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/Route' } } } }
+        '409': { description: Version conflict }
+
+  /v1/routes/{routeId}/assign:
+    post:
+      tags: [Routes]
+      summary: Assign driver/vehicle to route
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignmentRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Route' } } } }
+
+  /v1/routes/{routeId}/advance:
+    post:
+      tags: [AutoAdvance]
+      summary: Advance to next stop (manual or policy-driven)
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdvanceRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceResponse' } } } }
+
+  /v1/driver-events:
+    post:
+      tags: [DriverEvents]
+      summary: Ingest driver events batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriverEventsRequest' }
+      responses:
+        '202': { description: Accepted, content: { application/json: { schema: { $ref: '#/components/schemas/DriverEventsAck' } } } }
+
+  /v1/pod:
+    post:
+      tags: [PoD]
+      summary: Upload PoD metadata or request upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PoDRequest' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/PoDResponse' } } } }
+
+  /v1/subscriptions:
+    post:
+      tags: [Subscriptions]
+      summary: Create webhook subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubscriptionRequest' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Subscription' } } } }
+    get:
+      tags: [Subscriptions, SubscriptionsAdmin]
+      summary: List webhook subscriptions
+      parameters:
+        - in: query
+          name: cursor
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 100, maximum: 500 }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SubscriptionListResponse' } } } }
+
+  /v1/subscriptions/{subscriptionId}:
+    delete:
+      tags: [Subscriptions, SubscriptionsAdmin]
+      summary: Delete a subscription
+      parameters:
+        - in: path
+          name: subscriptionId
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: No Content }
+
+  /v1/admin/webhook-deliveries:
+    get:
+      tags: [WebhooksAdmin]
+      summary: List webhook deliveries (admin)
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [pending, retry, delivered, failed] }
+        - in: query
+          name: cursor
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 100, maximum: 500 }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/WebhookDeliveryList' } } } }
+
+  /v1/admin/webhook-metrics:
+    get:
+      tags: [WebhooksAdmin]
+      summary: Webhook delivery metrics
+      parameters:
+        - in: query
+          name: sinceHours
+          schema: { type: integer, default: 24 }
+        - in: query
+          name: eventType
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [pending, retry, delivered, failed] }
+        - in: query
+          name: responseCodeMin
+          schema: { type: integer }
+        - in: query
+          name: responseCodeMax
+          schema: { type: integer }
+        - in: query
+          name: codeClass
+          schema: { type: string, enum: ["2xx","3xx","4xx","5xx"] }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/WebhookMetricsResponse' } } } }
+
+  /v1/admin/webhook-deliveries/{id}/retry:
+    post:
+      tags: [WebhooksAdmin]
+      summary: Schedule retry for a delivery (admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '202': { description: Accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Ack' } } } }
+
+  /v1/admin/webhook-dlq:
+    get:
+      tags: [WebhooksAdmin]
+      summary: List dead-lettered webhook deliveries
+      parameters:
+        - in: query
+          name: cursor
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 100, maximum: 500 }
+        - in: query
+          name: eventType
+          schema: { type: string }
+        - in: query
+          name: olderThanHours
+          schema: { type: integer }
+        - in: query
+          name: responseCodeMin
+          schema: { type: integer }
+        - in: query
+          name: responseCodeMax
+          schema: { type: integer }
+        - in: query
+          name: errorQuery
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { type: object } }, nextCursor: { type: string } } } } } }
+    post:
+      tags: [WebhooksAdmin]
+      summary: Bulk requeue DLQ entries by id list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  items: { type: string }
+      responses:
+        '202': { description: Accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Ack' } } } }
+    delete:
+      tags: [WebhooksAdmin]
+      summary: Bulk delete DLQ entries by ids or olderThanHours
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items: { type: string }
+                olderThanHours: { type: integer }
+      responses:
+        '202': { description: Accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Ack' } } } }
+
+  /v1/admin/webhook-dlq/{id}/requeue:
+    post:
+      tags: [WebhooksAdmin]
+      summary: Requeue a dead-lettered webhook delivery
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '202': { description: Accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Ack' } } } }
+
+  /v1/eta/stream:
+    get:
+      tags: [Routes]
+      summary: ETA Server-Sent Events
+      parameters:
+        - in: query
+          name: routeId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: SSE stream }
+
+  /v1/routes/{routeId}/events/stream:
+    get:
+      tags: [Routes]
+      summary: Route events SSE (reoptimizations, stop changes)
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: SSE stream }
+
+  /v1/drivers/{driverId}/shift/start:
+    post:
+      tags: [Drivers]
+      summary: Start a driver shift
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShiftRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ShiftResponse' } } } }
+
+  /v1/drivers/{driverId}/shift/end:
+    post:
+      tags: [Drivers]
+      summary: End a driver shift
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShiftRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ShiftResponse' } } } }
+
+  /v1/drivers/{driverId}/breaks/start:
+    post:
+      tags: [Drivers]
+      summary: Start a break
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BreakRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ShiftResponse' } } } }
+
+  /v1/drivers/{driverId}/breaks/end:
+    post:
+      tags: [Drivers]
+      summary: End a break
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BreakRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ShiftResponse' } } } }
+
+  /v1/geofences:
+    get:
+      tags: [Geofences]
+      summary: List geofences
+      parameters:
+        - in: query
+          name: cursor
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 100, maximum: 500 }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/GeofenceListResponse' } } } }
+    post:
+      tags: [Geofences]
+      summary: Create a geofence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GeofenceInput' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Geofence' } } } }
+
+  /v1/geofences/{geofenceId}:
+    get:
+      tags: [Geofences]
+      summary: Get a geofence
+      parameters:
+        - in: path
+          name: geofenceId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Geofence' } } } }
+    patch:
+      tags: [Geofences]
+      summary: Update a geofence
+      parameters:
+        - in: path
+          name: geofenceId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GeofenceInput' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Geofence' } } } }
+    delete:
+      tags: [Geofences]
+      summary: Delete a geofence
+      parameters:
+        - in: path
+          name: geofenceId
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: No Content }
+
+  /v1/media/presign:
+    post:
+      tags: [Media]
+      summary: Request a presigned upload URL for PoD media
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PresignRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PresignResponse' } } } }
+
+  /healthz:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Health' } } } }
+
+  /readyz:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Health' } } } }
+
+  /v1/admin/routes/stats:
+    get:
+      tags: [Metrics]
+      summary: Route and leg aggregates for a plan date
+      parameters:
+        - in: query
+          name: planDate
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/RouteStats' } } } }
+
+  /v1/admin/plan-metrics:
+    get:
+      tags: [Metrics]
+      summary: Planner metrics (operator usage, iterations, costs) by algorithm
+      parameters:
+        - in: query
+          name: planDate
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: algo
+          schema: { type: string }
+        - in: query
+          name: includeWeights
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        algo: { type: string }
+                        iterations: { type: integer }
+                        improvements: { type: integer }
+                        acceptedWorse: { type: integer }
+                        bestCost: { type: number }
+                        finalCost: { type: number }
+                        removalSelects:
+                          type: array
+                          items: { type: integer }
+                        insertSelects:
+                          type: array
+                          items: { type: integer }
+                        initTemp: { type: number }
+                        cooling: { type: number }
+                        initRemovalWeights:
+                          type: array
+                          items: { type: number }
+                        initInsertionWeights:
+                          type: array
+                          items: { type: number }
+                        objectives:
+                          type: object
+                          additionalProperties: { type: number }
+
+  /v1/admin/plan-metrics/weights:
+    get:
+      tags: [Metrics]
+      summary: Planner operator weight snapshots by iteration
+      parameters:
+        - in: query
+          name: planDate
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: algo
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        iteration: { type: integer }
+                        removal:
+                          type: array
+                          items: { type: number }
+                        insertion:
+                          type: array
+                          items: { type: number }
+                        finalRemovalWeights:
+                          type: array
+                          items: { type: number }
+                        finalInsertionWeights:
+                          type: array
+                          items: { type: number }
+
+  /v1/optimizer/config:
+    get:
+      tags: [Optimization]
+      summary: Default optimizer configuration and objectives
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  defaults:
+                    type: object
+                    properties:
+                      algorithm: { type: string }
+                      timeBudgetMs: { type: integer }
+                      maxIterations: { type: integer }
+                      initTemp: { type: number }
+                      cooling: { type: number }
+                      removalWeights:
+                        type: array
+                        items: { type: number }
+                      insertionWeights:
+                        type: array
+                        items: { type: number }
+                      objectives:
+                        type: object
+                        additionalProperties: { type: number }
+                      latencyBuckets:
+                        type: array
+                        items: { type: integer }
+
+  /v1/admin/optimizer/config:
+    get:
+      tags: [Optimization]
+      summary: Get tenant optimizer default configuration
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  config: { type: object }
+    put:
+      tags: [Optimization]
+      summary: Update tenant optimizer default configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [config]
+              properties:
+                config: { type: object }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean } } } } } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    Ack:
+      type: object
+      properties:
+        accepted: { type: integer }
+        rejected: { type: integer }
+
+    OrderImportRequest:
+      type: object
+      required: [tenantId, orders]
+      properties:
+        tenantId: { type: string }
+        orders:
+          type: array
+          items: { $ref: '#/components/schemas/OrderInput' }
+
+    OrderInput:
+      type: object
+      required: [stops]
+      properties:
+        externalRef: { type: string }
+        priority: { type: integer, default: 0 }
+        attributes: { type: object, additionalProperties: true }
+        stops:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/StopInput' }
+
+    StopInput:
+      type: object
+      required: [type, location]
+      properties:
+        type: { type: string, enum: [pickup, delivery] }
+        address: { type: string }
+        location:
+          type: object
+          properties:
+            lat: { type: number }
+            lng: { type: number }
+        timeWindow:
+          type: object
+          properties:
+            start: { type: string, format: date-time }
+            end: { type: string, format: date-time }
+        serviceTimeSec: { type: integer, default: 0 }
+        requiredSkills:
+          type: array
+          items: { type: string }
+
+    OrderImportResponse:
+      type: object
+      properties:
+        importId: { type: string }
+        created: { type: integer }
+        skipped: { type: integer }
+
+    OrderListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Order' }
+        nextCursor: { type: string, nullable: true }
+
+    Order:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        externalRef: { type: string }
+        priority: { type: integer }
+        status: { type: string }
+        stops:
+          type: array
+          items: { $ref: '#/components/schemas/Stop' }
+
+    Stop:
+      type: object
+      properties:
+        id: { type: string }
+        orderId: { type: string }
+        type: { type: string }
+        address: { type: string }
+        location:
+          type: object
+          properties:
+            lat: { type: number }
+            lng: { type: number }
+        timeWindow:
+          type: object
+          properties:
+            start: { type: string, format: date-time }
+            end: { type: string, format: date-time }
+        serviceTimeSec: { type: integer }
+        status: { type: string }
+
+    OptimizeRequest:
+      type: object
+      required: [tenantId, planDate]
+      properties:
+        tenantId: { type: string }
+        planDate: { type: string, format: date }
+        algorithm:
+          type: string
+          enum: [greedy, alns]
+          description: Strategy for planning; defaults to greedy if unspecified
+        timeBudgetMs:
+          type: integer
+          description: Max wall-clock time for optimizer in milliseconds (ALNS)
+          example: 500
+        maxIterations:
+          type: integer
+          description: Max ALNS iterations; if set, acts as an upper bound in addition to timeBudgetMs
+        vehiclePool:
+          type: array
+          items: { type: string }
+        depots:
+          type: array
+          items: { type: string }
+        includeOrders:
+          type: array
+          items: { type: string }
+        constraints: { type: object, additionalProperties: true }
+        objectives: { type: object, additionalProperties: { type: number } }
+        reoptimize: { type: boolean, default: false }
+        freeze:
+          type: object
+          properties:
+            routes:
+              type: array
+              items: { type: string }
+            upToLegId: { type: string }
+
+    OptimizeResponse:
+      type: object
+      properties:
+        batchId: { type: string }
+        routes:
+          type: array
+          items: { $ref: '#/components/schemas/Route' }
+
+    Route:
+      type: object
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        planDate: { type: string, format: date }
+        status: { type: string }
+        driverId: { type: string }
+        vehicleId: { type: string }
+        legs:
+          type: array
+          items: { $ref: '#/components/schemas/Leg' }
+        costBreakdown: { type: object, additionalProperties: { type: number } }
+        autoAdvance: { $ref: '#/components/schemas/AutoAdvancePolicy' }
+        breaksCount: { type: integer, description: Number of planned breaks }
+        totalBreakSec: { type: integer, description: Total planned break seconds }
+
+    Leg:
+      type: object
+      properties:
+        id: { type: string }
+        seq: { type: integer }
+        kind: { type: string, enum: [drive, break], default: drive }
+        breakSec: { type: integer, description: Duration if kind=break }
+        fromStopId: { type: string }
+        toStopId: { type: string }
+        distM: { type: integer }
+        driveSec: { type: integer }
+        etaArrival: { type: string, format: date-time }
+        etaDeparture: { type: string, format: date-time }
+        status: { type: string }
+
+    RoutePatch:
+      type: object
+      properties:
+        status: { type: string }
+        lockedUntil: { type: string, format: date-time }
+        autoAdvance: { $ref: '#/components/schemas/AutoAdvancePolicy' }
+
+    AssignmentRequest:
+      type: object
+      required: [driverId, vehicleId]
+      properties:
+        driverId: { type: string }
+        vehicleId: { type: string }
+        startAt: { type: string, format: date-time }
+
+    DriverEventsRequest:
+      type: object
+      required: [tenantId, events]
+      properties:
+        tenantId: { type: string }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/DriverEvent' }
+
+    DriverEvent:
+      type: object
+      required: [type, ts]
+      properties:
+        type: { type: string, enum: [location, arrive, depart, exception, pod] }
+        driverId: { type: string }
+        routeId: { type: string }
+        legId: { type: string }
+        stopId: { type: string }
+        ts: { type: string, format: date-time }
+        payload: { type: object, additionalProperties: true }
+
+    DriverEventsAck:
+      type: object
+      properties:
+        accepted: { type: integer }
+        rejected: { type: integer }
+        advanced:
+          type: array
+          description: List of auto-advancements triggered by this batch
+          items: { $ref: '#/components/schemas/AdvanceResult' }
+
+    PoDRequest:
+      type: object
+      required: [tenantId, orderId, stopId, type]
+      properties:
+        tenantId: { type: string }
+        orderId: { type: string }
+        stopId: { type: string }
+        type: { type: string, enum: [signature, photo, barcode] }
+        media:
+          type: object
+          properties:
+            uploadUrl: { type: string }
+            sha256: { type: string }
+        metadata: { type: object, additionalProperties: true }
+
+    PoDResponse:
+      type: object
+      properties:
+        podId: { type: string }
+        status: { type: string }
+
+    SubscriptionRequest:
+      type: object
+      required: [tenantId, url, events]
+      properties:
+        tenantId: { type: string }
+        url: { type: string, format: uri }
+        events:
+          type: array
+          items: { type: string }
+        secret: { type: string }
+
+    Subscription:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        url: { type: string, format: uri }
+        events:
+          type: array
+          items: { type: string }
+        secret: { type: string }
+    SubscriptionListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Subscription' }
+        nextCursor: { type: string, nullable: true }
+
+    ShiftRequest:
+      type: object
+      required: [tenantId, ts]
+      properties:
+        tenantId: { type: string }
+        ts: { type: string, format: date-time }
+        note: { type: string }
+
+    BreakRequest:
+      type: object
+      required: [tenantId, ts]
+      properties:
+        tenantId: { type: string }
+        ts: { type: string, format: date-time }
+        type: { type: string, enum: [rest, meal, other] }
+
+    ShiftResponse:
+      type: object
+      properties:
+        driverId: { type: string }
+        status: { type: string }
+        hosState: { type: object, additionalProperties: true }
+
+    GeofenceInput:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [hub, customer, restricted] }
+        radiusM: { type: integer }
+        center:
+          type: object
+          properties:
+            lat: { type: number }
+            lng: { type: number }
+        rules: { type: object, additionalProperties: true }
+
+    Geofence:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        name: { type: string }
+        type: { type: string }
+        radiusM: { type: integer }
+        center: { $ref: '#/components/schemas/GeoPoint' }
+        rules: { type: object, additionalProperties: true }
+
+    GeofenceListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Geofence' }
+        nextCursor: { type: string, nullable: true }
+
+    PresignRequest:
+      type: object
+      required: [tenantId, fileName, contentType]
+      properties:
+        tenantId: { type: string }
+        fileName: { type: string }
+        contentType: { type: string }
+        bytes: { type: integer }
+        sha256: { type: string }
+
+    PresignResponse:
+      type: object
+      properties:
+        uploadUrl: { type: string }
+        method: { type: string, example: PUT }
+        headers: { type: object, additionalProperties: { type: string } }
+        expireAt: { type: string, format: date-time }
+
+    Health:
+      type: object
+      properties:
+        status: { type: string }
+
+    GeoPoint:
+      type: object
+      properties:
+        lat: { type: number }
+        lng: { type: number }
+
+    WebhookDelivery:
+      type: object
+      properties:
+        id: { type: string }
+        eventType: { type: string }
+        status: { type: string }
+        attempts: { type: integer }
+        nextAttemptAt: { type: string, format: date-time }
+        lastError: { type: string }
+        url: { type: string, format: uri }
+
+    WebhookDeliveryList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/WebhookDelivery' }
+        nextCursor: { type: string, nullable: true }
+
+    WebhookMetricsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              eventType: { type: string }
+              status: { type: string }
+              count: { type: integer }
+              avgLatencyMs: { type: integer }
+              latencyBuckets:
+                type: object
+                properties:
+                  lt100: { type: integer }
+                  p100_500: { type: integer }
+                  p500_1000: { type: integer }
+                  gte1000: { type: integer }
+              latencyBucketEdges:
+                type: array
+                items: { type: integer }
+              latencyBucketCounts:
+                type: array
+                items: { type: integer }
+              codeClasses:
+                type: object
+                properties:
+                  c2xx: { type: integer }
+                  c3xx: { type: integer }
+                  c4xx: { type: integer }
+                  c5xx: { type: integer }
+
+    RouteStats:
+      type: object
+      properties:
+        routes: { type: integer }
+        legs: { type: integer }
+        totalDistM: { type: integer }
+        totalDriveSec: { type: integer }
+        avgLegsPerRoute: { type: number }
+        breaks: { type: integer }
+        breakSec: { type: integer }
+
+    AutoAdvancePolicy:
+      type: object
+      description: Controls automatic progression to the next stop
+      properties:
+        enabled: { type: boolean, default: false }
+        trigger:
+          type: string
+          enum: [pod_ack, depart, geofence_arrive]
+          description: Which event triggers auto-advance
+        minDwellSec: { type: integer, description: Minimum dwell time before advancing }
+        requirePoD: { type: boolean, description: Require PoD before advance, default: true }
+        gracePeriodSec: { type: integer, description: Wait before advancing after trigger }
+        movingLock: { type: boolean, description: Prevent UI advances while vehicle is moving, default: true }
+        hosMaxDriveSec: { type: integer, description: Max continuous drive seconds before requiring break }
+
+    AdvanceRequest:
+      type: object
+      properties:
+        reason: { type: string, enum: [manual, pod_ack, depart, geofence_arrive] }
+        force: { type: boolean, description: Bypass policy checks }
+
+    AdvanceResult:
+      type: object
+      properties:
+        routeId: { type: string }
+        fromLegId: { type: string }
+        fromStopId: { type: string }
+        toLegId: { type: string }
+        toStopId: { type: string }
+        ts: { type: string, format: date-time }
+        changed: { type: boolean }
+
+    AdvanceResponse:
+      type: object
+      properties:
+        result: { $ref: '#/components/schemas/AdvanceResult' }
+        route: { $ref: '#/components/schemas/Route' }

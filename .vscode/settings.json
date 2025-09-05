@@ -1,0 +1,11 @@
+{
+    "chatgpt.openOnStartup": true,
+    "chatgpt.config": {
+
+    },
+    "cSpell.words": [
+        "Geofences",
+        "QLWS",
+        "readyz"
+    ]
+}

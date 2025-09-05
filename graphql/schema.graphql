@@ -1,0 +1,86 @@
+schema {
+  query: Query
+}
+
+type Query {
+  route(id: ID!): Route
+  orders(status: [OrderStatus!], cursor: String, limit: Int = 100): OrderConnection!
+  planMetrics(planDate: String!, algo: String): [PlanMetric!]!
+}
+
+enum OrderStatus { PENDING ASSIGNED IN_PROGRESS DELIVERED CANCELLED }
+
+type OrderConnection {
+  items: [Order!]!
+  nextCursor: String
+}
+
+type Order {
+  id: ID!
+  tenantId: ID!
+  externalRef: String
+  priority: Int
+  status: OrderStatus!
+  stops: [Stop!]!
+}
+
+type Stop {
+  id: ID!
+  orderId: ID!
+  type: String!
+  address: String
+  lat: Float
+  lng: Float
+  timeWindowStart: String
+  timeWindowEnd: String
+  serviceTimeSec: Int
+  status: String
+}
+
+type Route {
+  id: ID!
+  version: Int!
+  planDate: String!
+  status: String!
+  driverId: ID
+  vehicleId: ID
+  legs: [Leg!]!
+  costBreakdown: JSON
+  breaksCount: Int
+  totalBreakSec: Int
+}
+
+type Leg {
+  id: ID!
+  seq: Int!
+  kind: String
+  breakSec: Int
+  fromStopId: ID
+  toStopId: ID
+  distM: Int
+  driveSec: Int
+  etaArrival: String
+  etaDeparture: String
+  status: String
+}
+
+scalar JSON
+
+type PlanMetric {
+  algo: String!
+  iterations: Int
+  improvements: Int
+  acceptedWorse: Int
+  bestCost: Float
+  finalCost: Float
+  removalSelects: [Int!]
+  insertSelects: [Int!]
+  objectives: JSON
+  initTemp: Float
+  cooling: Float
+  initRemovalWeights: [Float!]
+  initInsertionWeights: [Float!]
+}
+type Subscription {
+  routeEvents(routeId: ID!): JSON
+}

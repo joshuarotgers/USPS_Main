@@ -1,0 +1,48 @@
+package opt
+
+// Skeleton for Adaptive Large Neighborhood Search (ALNS) VRPTW optimizer.
+
+type Order struct {
+    ID       string
+    Priority int
+}
+
+type Vehicle struct {
+    ID string
+}
+
+type Constraints struct {
+    // capacity, skills, time windows, HoS, zones, etc.
+}
+
+type Solution struct {
+    Cost   float64
+    Routes []Route
+}
+
+type Route struct {
+    ID   string
+    Legs []Leg
+}
+
+type Leg struct {
+    From string
+    To   string
+}
+
+type DestroyOp func(sol Solution) Solution
+type RepairOp func(sol Solution) Solution
+
+// Optimize performs a time-bounded ALNS search and returns the best solution found.
+func Optimize(orders []Order, vehicles []Vehicle, cons Constraints) Solution {
+    // stub seed solution — one route with no legs
+    seed := Solution{Cost: 0, Routes: []Route{{ID: "r1"}}}
+    best := seed
+    curr := seed
+
+    // NOTE: This is a placeholder. Implement operator selection, acceptance criteria,
+    // adaptive weights, local improvements, and real-time freeze logic.
+    _ = curr
+    return best
+}
+

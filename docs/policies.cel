@@ -1,0 +1,11 @@
+// Example CEL policies
+
+// Speeding alert when speedKph exceeds tenant-configured limit by > 10%
+// event.payload.speedKph > (tenant.settings.maxSpeedKph * 1.1)
+
+// Restricted zone entry
+// has(geofence) && geofence.type == 'restricted'
+
+// Hours of Service: driving more than 8 hours without 30 min break
+// driver.hos.continuousDrivingMinutes > 480 && event.type == 'driver.depart'
+
