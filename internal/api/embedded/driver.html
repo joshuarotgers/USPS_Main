@@ -10,6 +10,7 @@
   <header>
     <h1>Driver App</h1>
     <nav><a href="/">Home</a> · <a href="/docs" target="_blank">Docs</a> · <a href="/swagger" target="_blank">API Console</a></nav>
+    <link rel="manifest" href="/static/manifest.json"/>
   </header>
   <section id="auth">
     <h2>Settings</h2>
@@ -76,5 +77,10 @@
     <pre id="eventsOut"></pre>
   </section>
   <script src="/static/driver.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/driver-sw.js').catch(()=>{});
+    }
+  </script>
 </body>
 </html>

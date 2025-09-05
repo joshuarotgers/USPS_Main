@@ -21,6 +21,10 @@ var driverHTML []byte
 var driverJS []byte
 //go:embed embedded/driver.css
 var driverCSS []byte
+//go:embed embedded/driver-sw.js
+var driverSW []byte
+//go:embed embedded/manifest.json
+var manifestJSON []byte
 
 // StaticHandler serves embedded static assets (Redoc)
 func (s *Server) StaticHandler(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +48,12 @@ func (s *Server) StaticHandler(w http.ResponseWriter, r *http.Request) {
     case "/static/driver.css":
         w.Header().Set("Content-Type", "text/css")
         w.WriteHeader(200); _, _ = w.Write(driverCSS)
+    case "/static/driver-sw.js":
+        w.Header().Set("Content-Type", "application/javascript")
+        w.WriteHeader(200); _, _ = w.Write(driverSW)
+    case "/static/manifest.json":
+        w.Header().Set("Content-Type", "application/manifest+json")
+        w.WriteHeader(200); _, _ = w.Write(manifestJSON)
     case "/app", "/app/":
         w.Header().Set("Content-Type", "text/html; charset=utf-8")
         w.WriteHeader(200); _, _ = w.Write(driverHTML)

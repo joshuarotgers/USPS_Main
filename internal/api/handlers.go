@@ -439,6 +439,34 @@ func (s *Server) DriversHandler(w http.ResponseWriter, r *http.Request) {
         writeJSON(w, 200, map[string]any{"items": ids})
         return
     }
+    // Summary of active routes
+    if r.Method == http.MethodGet && action == "routes/summary" {
+        _, tenant := s.withTenant(r)
+        ids, err := s.Store.ListActiveRoutesForDriver(r.Context(), tenant, driverID)
+        if err != nil { writeProblem(w, 500, "List routes failed", err.Error(), r.URL.Path); return }
+        out := make([]map[string]any, 0, len(ids))
+        for _, id := range ids {
+            rt, err := s.Store.GetRoute(r.Context(), tenant, id)
+            if err != nil { continue }
+            var next *model.Leg
+            for i := range rt.Legs { if strings.EqualFold(rt.Legs[i].Status, "in_progress") { next = &rt.Legs[i]; break } }
+            if next == nil && len(rt.Legs) > 0 { next = &rt.Legs[0] }
+            m := map[string]any{"id": rt.ID, "status": rt.Status, "version": rt.Version}
+            if next != nil {
+                m["next"] = map[string]any{
+                    "fromStopId": next.FromStopID,
+                    "toStopId":   next.ToStopID,
+                    "kind":       next.Kind,
+                    "etaArrival": next.ETAArrival,
+                    "etaDeparture": next.ETADeparture,
+                    "status":     next.Status,
+                }
+            }
+            out = append(out, m)
+        }
+        writeJSON(w, 200, map[string]any{"items": out})
+        return
+    }
 
     var ts time.Time
     var note, breakType string
