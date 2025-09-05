@@ -1,0 +1,48 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Error rate (5m)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "sum(rate({job=\"docker\"} |= \"level=ERROR\" [5m]))",
+          "legendFormat": "errors/s"
+        }
+      ],
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}
+    },
+    {
+      "type": "table",
+      "title": "Top paths by log volume (5m)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "sum by (path) (count_over_time({job=\"docker\"} |= \"http_request\" | regexp \"path=(?P<path>\\\\S+)\" [5m]))",
+          "legendFormat": "{{path}}"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 10, "x": 6, "y": 0}
+    },
+    {
+      "type": "logs",
+      "title": "API Logs",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "{job=\"docker\"} |= \"http_request\"",
+          "legendFormat": ""
+        }
+      ],
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 8}
+    }
+  ],
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "title": "GPSNav API Logs",
+  "version": 1
+}
+

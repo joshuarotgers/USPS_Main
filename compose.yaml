@@ -58,6 +58,7 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboard-api.json:/var/lib/grafana/dashboards/dashboard-api.json:ro
+      - ./grafana/dashboard-logs.json:/var/lib/grafana/dashboards/dashboard-logs.json:ro
     depends_on:
       prometheus:
         condition: service_started
