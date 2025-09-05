@@ -35,6 +35,30 @@ Dev helpers:
 - WS demo: `make ws-demo PORT=9099` — runs a small GraphQL WS client that subscribes to `routeEvents` and prints frames (expects server running on PORT).
 - One-shot WS demo: `make run-ws-demo PORT=9099` — starts the server, runs the WS client, then cleans up.
 
+## Docker
+
+- Build image: `docker build -t gpsnav-api .`
+- Run: `docker run --rm -p 8080:8080 -e PORT=8080 gpsnav-api`
+
+### Docker Compose (with Postgres + Redis)
+
+- Start stack: `docker compose up --build`
+- API available at `http://localhost:8080`
+- Adjust env in `compose.yaml` as needed (DB/Redis URLs, PORT).
+
+## Systemd
+
+Sample unit and env file in `deploy/systemd/`:
+- Copy binary to `/usr/local/bin/api`
+- Create data dir: `/var/lib/gpsnav` (owned by `www-data`)
+- Copy `deploy/systemd/api.service` to `/etc/systemd/system/api.service`
+- Copy `deploy/systemd/api.env.example` to `/etc/gpsnav/api.env` and edit
+- Enable + start: `sudo systemctl enable --now api`
+
+## License
+
+MIT — see `LICENSE`.
+
 Endpoints (stubbed):
 - `POST /v1/orders` — bulk import orders
 - `POST /v1/optimize` — plan/replan routes

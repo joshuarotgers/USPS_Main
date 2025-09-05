@@ -49,6 +49,10 @@ jobs:
           cp -f configs/.env.example "$PKGDIR/configs/" 2>/dev/null || true
           cp -f openapi/openapi.yaml "$PKGDIR/openapi/" 2>/dev/null || true
           cp -f graphql/schema.graphql "$PKGDIR/graphql/" 2>/dev/null || true
+          # Include Docker + systemd helpers and LICENSE
+          cp -f LICENSE Dockerfile compose.yaml "$PKGDIR/" 2>/dev/null || true
+          mkdir -p "$PKGDIR/deploy/systemd"
+          cp -f deploy/systemd/api.service deploy/systemd/api.env.example "$PKGDIR/deploy/systemd/" 2>/dev/null || true
           # Package archive per OS
           if [ "$GOOS" = "windows" ]; then
             ARCHIVE="dist/${BIN}_${VER}_${GOOS}_${GOARCH}.zip"
