@@ -16,6 +16,7 @@ type Store interface {
 
     // Routes
     GetRoute(ctx context.Context, tenantID, routeID string) (model.Route, error)
+    ListRoutes(ctx context.Context, tenantID, cursor string, limit int) ([]model.Route, string, error)
     AssignRoute(ctx context.Context, tenantID, routeID, driverID, vehicleID string, startAt time.Time) (model.Route, error)
     PatchRoute(ctx context.Context, tenantID, routeID string, patch model.RoutePatch) (model.Route, error)
     PlanRoutes(ctx context.Context, req model.OptimizeRequest) (routes []model.Route, batchID string, err error)

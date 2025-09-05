@@ -22,14 +22,18 @@ type Server struct {
 func NewServer() (*Server, error) {
     dsn := os.Getenv("DATABASE_URL")
     var s store.Store
-    var err error
     if strings.TrimSpace(dsn) == "" {
         s = store.NewMemory()
     } else {
-        s, err = store.NewPostgres(dsn)
+        sp, err := store.NewPostgres(dsn)
         if err != nil {
             return nil, err
         }
+        // Run migrations (dev helper)
+        if os.Getenv("DB_MIGRATE") != "false" {
+            _ = sp.MigrateDir("db/migrations")
+        }
+        s = sp
     }
     // Broker selection
     var broker EventBroker

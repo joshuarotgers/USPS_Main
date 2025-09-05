@@ -50,6 +50,9 @@ func main() {
     // Health
     mux.HandleFunc("/healthz", srvDeps.HealthHandler)
     mux.HandleFunc("/readyz", srvDeps.ReadyHandler)
+    // Docs / OpenAPI
+    mux.HandleFunc("/openapi.yaml", srvDeps.OpenAPIHandler)
+    mux.HandleFunc("/docs", srvDeps.DocsHandler)
 
     // Admin
     mux.HandleFunc("/v1/admin/webhook-deliveries", srvDeps.WebhookDeliveriesHandler)
@@ -73,6 +76,8 @@ func main() {
 
     // GraphQL WebSocket subscriptions endpoint
     mux.HandleFunc("/graphql/ws", srvDeps.GraphQLWSHandler)
+    // Minimal GraphQL HTTP endpoint (queries)
+    mux.HandleFunc("/graphql", srvDeps.GraphQLHTTPHandler)
 
     addr := ":8080"
     if v := os.Getenv("PORT"); v != "" {

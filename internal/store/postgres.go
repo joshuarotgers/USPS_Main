@@ -14,6 +14,10 @@ import (
     "strings"
     "crypto/sha256"
     "encoding/hex"
+    "os"
+    "sort"
+    "io/fs"
+    "path/filepath"
 
     "gpsnav/internal/model"
     "gpsnav/internal/opt"
@@ -33,6 +37,9 @@ func NewPostgres(dsn string) (*Postgres, error) {
     }
     return &Postgres{db: db}, nil
 }
+
+// Ping tests connectivity
+func (p *Postgres) Ping(ctx context.Context) error { return p.db.PingContext(ctx) }
 
 // CreateOrders inserts orders and their stops. Dedup by (tenant_id, external_ref).
 func (p *Postgres) CreateOrders(ctx context.Context, tenantID string, orders []model.OrderIn) (string, int, int, error) {
@@ -165,6 +172,33 @@ func (p *Postgres) GetRoute(ctx context.Context, tenantID, routeID string) (mode
     r.BreaksCount = breaks
     r.TotalBreakSec = breakSecTotal
     return r, nil
+}
+
+func (p *Postgres) ListRoutes(ctx context.Context, tenantID, cursor string, limit int) ([]model.Route, string, error) {
+    if limit <= 0 || limit > 500 { limit = 100 }
+    var rows *sql.Rows
+    var err error
+    if cursor != "" {
+        rows, err = p.db.QueryContext(ctx, `SELECT id::text, version, plan_date, status, COALESCE(driver_id::text,''), COALESCE(vehicle_id::text,'') FROM routes WHERE tenant_id=$1 AND id::text > $2 ORDER BY id LIMIT $3`, tenantID, cursor, limit)
+    } else {
+        rows, err = p.db.QueryContext(ctx, `SELECT id::text, version, plan_date, status, COALESCE(driver_id::text,''), COALESCE(vehicle_id::text,'') FROM routes WHERE tenant_id=$1 ORDER BY id LIMIT $2`, tenantID, limit)
+    }
+    if err != nil { return nil, "", err }
+    defer rows.Close()
+    out := []model.Route{}
+    last := ""
+    for rows.Next() {
+        var r model.Route
+        var driverID, vehicleID string
+        if err := rows.Scan(&r.ID, &r.Version, &r.PlanDate, &r.Status, &driverID, &vehicleID); err != nil { return nil, "", err }
+        if driverID != "" { r.DriverID = driverID }
+        if vehicleID != "" { r.VehicleID = vehicleID }
+        out = append(out, r)
+        last = r.ID
+    }
+    next := ""
+    if len(out) == limit { next = last }
+    return out, next, nil
 }
 
 func (p *Postgres) AssignRoute(ctx context.Context, tenantID, routeID, driverID, vehicleID string, startAt time.Time) (model.Route, error) {
@@ -1280,4 +1314,26 @@ func mediaHash(m *model.PoDMedia) any { if m == nil { return nil }; return m.SHA
 func pqStringArray(v []string) any {
     if len(v) == 0 { return nil }
     return v
+}
+
+// MigrateDir applies .sql files from dir in lexicographic order. Intended for simple dev use.
+func (p *Postgres) MigrateDir(dir string) error {
+    entries := []string{}
+    // Walk dir collect .sql files
+    err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+        if err != nil { return err }
+        if d.IsDir() { return nil }
+        if strings.HasSuffix(strings.ToLower(d.Name()), ".sql") { entries = append(entries, path) }
+        return nil
+    })
+    if err != nil { return err }
+    sort.Strings(entries)
+    ctx := context.Background()
+    for _, f := range entries {
+        b, err := os.ReadFile(f)
+        if err != nil { return err }
+        if len(strings.TrimSpace(string(b))) == 0 { continue }
+        if _, err := p.db.ExecContext(ctx, string(b)); err != nil { return fmt.Errorf("migrate %s: %w", filepath.Base(f), err) }
+    }
+    return nil
 }

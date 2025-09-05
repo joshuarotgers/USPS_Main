@@ -1,6 +1,7 @@
 package api
 
 import (
+    "context"
     "encoding/json"
     "fmt"
     "io"
@@ -283,15 +284,15 @@ func (s *Server) RouteByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 // RoutesIndexHandler exists for completeness (not used yet)
 func (s *Server) RoutesIndexHandler(w http.ResponseWriter, r *http.Request) {
-    if r.URL.Path != "/v1/routes" {
-        writeProblem(w, http.StatusNotFound, "Not Found", "", r.URL.Path)
-        return
-    }
-    if r.Method == http.MethodGet {
-        writeJSON(w, http.StatusOK, map[string]any{"items": []any{}})
-        return
-    }
-    w.WriteHeader(http.StatusMethodNotAllowed)
+    if r.URL.Path != "/v1/routes" { writeProblem(w, http.StatusNotFound, "Not Found", "", r.URL.Path); return }
+    if r.Method != http.MethodGet { w.WriteHeader(http.StatusMethodNotAllowed); return }
+    _, tenant := s.withTenant(r)
+    cursor := r.URL.Query().Get("cursor")
+    limit := 100
+    if v := r.URL.Query().Get("limit"); v != "" { fmt.Sscanf(v, "%d", &limit) }
+    items, next, err := s.Store.ListRoutes(r.Context(), tenant, cursor, limit)
+    if err != nil { writeProblem(w, 500, "List routes failed", err.Error(), r.URL.Path); return }
+    writeJSON(w, 200, map[string]any{"items": items, "nextCursor": next})
 }
 
 // DriverEventsHandler handles POST /v1/driver-events
@@ -547,7 +548,13 @@ func (s *Server) HealthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ReadyHandler(w http.ResponseWriter, r *http.Request) {
-    // TODO: check DB connectivity when using Postgres
+    // Check DB connectivity when using Postgres store
+    type pinger interface{ Ping(ctx context.Context) error }
+    if pg, ok := s.Store.(pinger); ok {
+        ctx, cancel := context.WithTimeout(r.Context(), 500*time.Millisecond)
+        defer cancel()
+        if err := pg.Ping(ctx); err != nil { writeProblem(w, 503, "Not Ready", err.Error(), r.URL.Path); return }
+    }
     writeJSON(w, 200, map[string]string{"status": "ready"})
 }
 

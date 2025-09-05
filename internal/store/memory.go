@@ -16,6 +16,7 @@ type Memory struct {
     orders map[string]model.OrderOut            // id -> order
     byTen  map[string][]string                  // tenant -> order ids
     routes map[string]model.Route               // id -> route
+    routesTen map[string][]string               // tenant -> route ids
     hos    map[string]map[string]any            // driverId -> HOS state
     gfs    map[string]model.Geofence            // geofenceId -> geofence
     gfsTen map[string][]string                  // tenant -> geofence ids
@@ -33,6 +34,7 @@ func NewMemory() *Memory {
         orders: map[string]model.OrderOut{},
         byTen: map[string][]string{},
         routes: map[string]model.Route{},
+        routesTen: map[string][]string{},
         hos: map[string]map[string]any{},
         gfs: map[string]model.Geofence{},
         gfsTen: map[string][]string{},
@@ -173,6 +175,7 @@ func (m *Memory) PlanRoutes(ctx context.Context, req model.OptimizeRequest) ([]m
         {ID: uuid.New().String(), Seq: 2, FromStopID: "s2", ToStopID: "s3", Status: "pending"},
     }}
     m.routes[id] = r
+    m.routesTen[req.TenantID] = append(m.routesTen[req.TenantID], id)
     // Record simple planner metrics for admin views
     algo := req.Algorithm
     if algo == "" { algo = "greedy" }
@@ -518,6 +521,24 @@ func (m *Memory) WebhookMetrics(ctx context.Context, tenantID string, since time
         out = append(out, row)
     }
     return out, nil
+}
+
+func (m *Memory) ListRoutes(ctx context.Context, tenantID, cursor string, limit int) ([]model.Route, string, error) {
+    m.mu.Lock(); defer m.mu.Unlock()
+    ids := m.routesTen[tenantID]
+    start := 0
+    if cursor != "" {
+        for i, id := range ids { if id == cursor { start = i+1; break } }
+    }
+    if limit <= 0 { limit = 100 }
+    out := []model.Route{}
+    next := ""
+    for i := start; i < len(ids) && len(out) < limit; i++ {
+        out = append(out, m.routes[ids[i]])
+        next = ids[i]
+    }
+    if len(out) < limit { next = "" }
+    return out, next, nil
 }
 
 // helper: iterate delivery IDs by tenant order
