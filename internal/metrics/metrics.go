@@ -1,11 +1,14 @@
 package metrics
 
 import (
+    "sync"
     "github.com/prometheus/client_golang/prometheus"
     "github.com/prometheus/client_golang/prometheus/collectors"
 )
 
 var (
+    // Registry is the dedicated Prometheus registry for the API
+    Registry = prometheus.NewRegistry()
     // HTTPRequests counts requests by method, path, and status
     HTTPRequests = prometheus.NewCounterVec(
         prometheus.CounterOpts{Name: "http_requests_total", Help: "Total HTTP requests."},
@@ -31,12 +34,15 @@ var (
 
 // RegisterDefault registers collectors to the default registry.
 func RegisterDefault() {
-    prometheus.MustRegister(HTTPRequests)
-    prometheus.MustRegister(HTTPDuration)
-    prometheus.MustRegister(WebhookDeliveries)
-    prometheus.MustRegister(WebhookLatency)
-    // Go/process collectors
-    prometheus.MustRegister(collectors.NewGoCollector())
-    prometheus.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+    regOnce.Do(func(){
+        Registry.MustRegister(HTTPRequests)
+        Registry.MustRegister(HTTPDuration)
+        Registry.MustRegister(WebhookDeliveries)
+        Registry.MustRegister(WebhookLatency)
+        // Go/process collectors on our registry
+        Registry.MustRegister(collectors.NewGoCollector())
+        Registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+    })
 }
 
+var regOnce sync.Once

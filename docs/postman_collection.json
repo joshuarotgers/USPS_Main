@@ -1,0 +1,41 @@
+{
+  "info": {
+    "name": "GPSNav API (Local)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": {"major": 0, "minor": 1, "patch": 0}
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {"method": "GET", "url": "{{base}}/healthz"}
+    },
+    {
+      "name": "Docs",
+      "request": {"method": "GET", "url": "{{base}}/docs"}
+    },
+    {
+      "name": "Metrics",
+      "request": {"method": "GET", "url": "{{base}}/metrics"}
+    },
+    {
+      "name": "Optimize",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"},
+          {"key": "X-Role", "value": "admin"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"tenantId\": \"t_demo\",\n  \"planDate\": \"2025-09-05\",\n  \"algorithm\": \"greedy\"\n}"},
+        "url": "{{base}}/v1/optimize"
+      }
+    },
+    {
+      "name": "Routes Index",
+      "request": {"method": "GET", "url": "{{base}}/v1/routes"}
+    }
+  ],
+  "variable": [
+    {"key": "base", "value": "http://localhost:8081"}
+  ]
+}
+

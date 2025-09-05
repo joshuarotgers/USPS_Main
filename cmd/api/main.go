@@ -67,9 +67,24 @@ func main() {
     // Docs / OpenAPI
     mux.HandleFunc("/openapi.yaml", srvDeps.OpenAPIHandler)
     mux.HandleFunc("/docs", srvDeps.DocsHandler)
+    // Root: simple index page with links
+    mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        if r.URL.Path != "/" { http.NotFound(w, r); return }
+        w.Header().Set("Content-Type", "text/html; charset=utf-8")
+        _, _ = w.Write([]byte(`<!DOCTYPE html><html><head><title>GPSNav API</title><meta charset="utf-8"/></head>
+        <body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 2rem;">
+        <h1>GPSNav API</h1>
+        <ul>
+          <li><a href="/healthz">/healthz</a> — health check</li>
+          <li><a href="/readyz">/readyz</a> — readiness</li>
+          <li><a href="/docs">/docs</a> — OpenAPI docs</li>
+          <li><a href="/metrics">/metrics</a> — Prometheus metrics</li>
+        </ul>
+        </body></html>`))
+    })
     // Metrics
     metrics.RegisterDefault()
-    mux.Handle("/metrics", promhttp.Handler())
+    mux.Handle("/metrics", promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{}))
 
     // Admin
     mux.HandleFunc("/v1/admin/webhook-deliveries", srvDeps.WebhookDeliveriesHandler)

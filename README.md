@@ -43,7 +43,7 @@ Dev helpers:
 ### Docker Compose (with Postgres + Redis)
 
 - Start stack: `docker compose up --build`
-- API available at `http://localhost:8080`
+ - API available at `http://localhost:8081` (compose maps host 8081 -> container 8080)
 - Adjust env in `compose.yaml` as needed (DB/Redis URLs, PORT).
 
 Optional services included:

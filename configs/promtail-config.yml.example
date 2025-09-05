@@ -10,6 +10,8 @@ clients:
 
 scrape_configs:
   - job_name: docker
+    # Ignore very old container logs to avoid flooding Loki on first start
+    ignore_older: 24h
     static_configs:
       - targets:
           - localhost
@@ -19,4 +21,3 @@ scrape_configs:
           __path__: /var/lib/docker/containers/*/*-json.log
     pipeline_stages:
       - docker: {}
-
