@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        shell: bash
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          if [ -f CHANGELOG.md ]; then
+            awk -v ver="$ver" '
+              BEGIN { in=0 }
+              /^## \[/ {
+                if (in==1) exit 0
+                if ($0 ~ "\\[" ver "\\]") { in=1; next }
+              }
+              in==1 { print }
+            ' CHANGELOG.md > RELEASE_NOTES.md || true
+          fi
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "No changelog section found for $ver; using default body" > RELEASE_NOTES.md
+          fi
+          echo "path=RELEASE_NOTES.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
