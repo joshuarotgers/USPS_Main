@@ -4,104 +4,23 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  build-and-release:
+  create-release:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux, darwin, windows]
-        goarch: [amd64, arm64]
-        exclude:
-          - goos: windows
-            goarch: arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24.x'
-
-      - name: Build and package ${{ matrix.goos }}-${{ matrix.goarch }}
-        env:
-          CGO_ENABLED: 0
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          BIN=api
-          VER="${GITHUB_REF_NAME}"
-          EXT=""
-          if [ "$GOOS" = "windows" ]; then EXT=.exe; fi
-          # Build binary
-          OUT_BIN="dist/${BIN}${EXT}"
-          echo "Building $OUT_BIN"
-          # Ensure embedded OpenAPI & Redoc assets are present
-          mkdir -p internal/api/embedded
-          cp openapi/openapi.yaml internal/api/embedded/openapi.yaml
-          curl -fsSL https://cdn.jsdelivr.net/npm/redoc@2.1.4/bundles/redoc.standalone.js -o internal/api/embedded/redoc.standalone.js
-          curl -fsSL https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js -o internal/api/embedded/swagger-ui-bundle.js
-          curl -fsSL https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js -o internal/api/embedded/swagger-ui-standalone-preset.js
-          curl -fsSL https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css -o internal/api/embedded/swagger-ui.css
-          LD_FLAGS="-s -w -X gpsnav/internal/buildinfo.Version=$VER -X gpsnav/internal/buildinfo.BuiltAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          go build -tags embed_openapi -trimpath -ldflags "$LD_FLAGS" -o "$OUT_BIN" ./cmd/api
-          # Staging directory with extras
-          PKGDIR="dist/${BIN}_${VER}_${GOOS}_${GOARCH}"
-          mkdir -p "$PKGDIR"
-          mv "$OUT_BIN" "$PKGDIR/"
-          cp -f README.md CHANGELOG.md "$PKGDIR/" 2>/dev/null || true
-          mkdir -p "$PKGDIR/configs" "$PKGDIR/openapi" "$PKGDIR/graphql"
-          cp -f configs/*.example "$PKGDIR/configs/" 2>/dev/null || true
-          cp -f openapi/openapi.yaml "$PKGDIR/openapi/" 2>/dev/null || true
-          cp -f graphql/schema.graphql "$PKGDIR/graphql/" 2>/dev/null || true
-          # Include Docker + systemd helpers and LICENSE
-          cp -f LICENSE Dockerfile compose.yaml "$PKGDIR/" 2>/dev/null || true
-          mkdir -p "$PKGDIR/deploy/systemd"
-          cp -f deploy/systemd/api.service deploy/systemd/api.env.example "$PKGDIR/deploy/systemd/" 2>/dev/null || true
-          # Package archive per OS
-          if [ "$GOOS" = "windows" ]; then
-            ARCHIVE="dist/${BIN}_${VER}_${GOOS}_${GOARCH}.zip"
-            (cd dist && zip -qr "$(basename "$ARCHIVE")" "$(basename "$PKGDIR")")
-          else
-            ARCHIVE="dist/${BIN}_${VER}_${GOOS}_${GOARCH}.tar.gz"
-            tar -C dist -czf "$ARCHIVE" "$(basename "$PKGDIR")"
-          fi
-          # Cleanup staging dir
-          rm -rf "$PKGDIR"
-          # Checksums
-          sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
-
-      - name: Extract release notes from CHANGELOG
-        id: notes
-        shell: bash
-        run: |
-          ver="${GITHUB_REF_NAME#v}"
-          if [ -f CHANGELOG.md ]; then
-            awk -v ver="$ver" '
-              BEGIN { in=0 }
-              /^## \[/ {
-                if (in==1) exit 0
-                if ($0 ~ "\\[" ver "\\]") { in=1; next }
-              }
-              in==1 { print }
-            ' CHANGELOG.md > RELEASE_NOTES.md || true
-          fi
-          if [ ! -s RELEASE_NOTES.md ]; then
-            echo "No changelog section found for $ver; using default body" > RELEASE_NOTES.md
-          fi
-
-      - name: Upload release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          body_path: RELEASE_NOTES.md
-          files: |
-            dist/*.tar.gz
-            dist/*.zip
-            dist/*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: false
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
