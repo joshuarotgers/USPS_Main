@@ -1,22 +1,28 @@
 package api
 
 import (
-    "encoding/base64"
-    "encoding/json"
-    "net/http"
+	"encoding/base64"
+	"encoding/json"
+	"net/http"
 
-    yaml "gopkg.in/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // SwaggerHandler serves an interactive Swagger UI with inlined spec and auth presets.
 func (s *Server) SwaggerHandler(w http.ResponseWriter, r *http.Request) {
-    data, err := openAPILoad()
-    if err != nil { writeProblem(w, 500, "OpenAPI not available", err.Error(), r.URL.Path); return }
-    var obj map[string]any
-    if err := yaml.Unmarshal(data, &obj); err != nil { writeProblem(w, 500, "OpenAPI parse failed", err.Error(), r.URL.Path); return }
-    js, _ := json.Marshal(obj)
-    b64 := base64.StdEncoding.EncodeToString(js)
-    html := `<!DOCTYPE html><html lang="en"><head>
+	data, err := openAPILoad()
+	if err != nil {
+		writeProblem(w, 500, "OpenAPI not available", err.Error(), r.URL.Path)
+		return
+	}
+	var obj map[string]any
+	if err := yaml.Unmarshal(data, &obj); err != nil {
+		writeProblem(w, 500, "OpenAPI parse failed", err.Error(), r.URL.Path)
+		return
+	}
+	js, _ := json.Marshal(obj)
+	b64 := base64.StdEncoding.EncodeToString(js)
+	html := `<!DOCTYPE html><html lang="en"><head>
     <title>API Console</title>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -60,6 +66,6 @@ func (s *Server) SwaggerHandler(w http.ResponseWriter, r *http.Request) {
     });
     </script>
     </body></html>`
-    w.Header().Set("Content-Type", "text/html; charset=utf-8")
-    _, _ = w.Write([]byte(html))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write([]byte(html))
 }

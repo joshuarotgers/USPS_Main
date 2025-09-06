@@ -1,0 +1,50 @@
+html, body, #map { height: 100%; margin: 0; padding: 0; }
+.panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size: 14px;
+  max-width: 360px;
+}
+.row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.row label { width: 64px; color: #333; }
+.label-inline { width: auto !important; }
+.ml-8{ margin-left:8px }
+.mt-6{ margin-top:6px }
+.hidden{ display:none }
+.muted{ color:#6b7280 }
+.row input { flex: 1; padding: 4px 6px; }
+.row button { padding: 6px 10px; }
+.section { margin-top: 10px; }
+.section-title { font-weight: 600; margin-bottom: 6px; }
+#routes { max-height: 160px; overflow: auto; border: 1px solid #eee; padding: 6px; background: #fafafa; }
+.route-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px dashed #eee; }
+.route-item:last-child { border-bottom: 0; }
+.events { max-height: 140px; overflow: auto; background: #111; color: #0f0; padding: 8px; border-radius: 6px; border: 1px solid #333; }
+.leaflet-popup-content { font-size: 13px; }
+.grp { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#374151; color:#fff; font: 12px/1 monospace; border:2px solid #fff; box-shadow:0 0 6px rgba(0,0,0,0.4) }
+.heat { width:22px; height:22px; border-radius:50%; background: rgba(220,38,38,0.25); border: 2px solid rgba(220,38,38,0.5) }
+
+/* Driver markers (divIcon) */
+.driver-pin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 2px rgba(0,0,0,0.5); display: inline-block; }
+.driver-wrap { display: flex; align-items: center; gap: 6px; }
+.driver-label { font: 12px/1.2 monospace; background: rgba(255,255,255,0.9); padding: 1px 4px; border-radius: 3px; border: 1px solid #ddd; }
+.driver-pin.sel { border-color: #000; box-shadow: 0 0 6px rgba(0,0,0,0.6); }
+.driver-label.sel { font-weight: 700; border-color: #aaa; }
+.legend-row{ gap:8px; align-items:center }
+.legend-dot{ width:12px; height:12px; border-radius:50%; display:inline-block; border:1px solid rgba(220,38,38,0.6) }
+.legend-dot.fresh{ background:rgba(220,38,38,0.6); border-color: rgba(220,38,38,0.8) }
+.legend-dot.recent{ background:rgba(220,38,38,0.3); border-color: rgba(220,38,38,0.5) }
+.legend-dot.older{ background:rgba(220,38,38,0.1); border-color: rgba(220,38,38,0.2) }
+/* widths for number inputs */
+#sim-interval{ width:90px }
+#recent-sec{ width:70px }
+#sim-speed{ width:70px }
+#sim-drivers{ width:60px }
+#sim-jitter-m{ width:60px }
+#follow-driver{ margin-left:8px; min-width:140px }

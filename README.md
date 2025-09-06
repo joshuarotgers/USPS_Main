@@ -22,6 +22,10 @@ This repository contains a foundational scaffold for a universal GPS navigation 
 - `internal/` — Packages for api, models, optimization, integrations, etc.
 - `mobile/local_schema.sql` — Offline-first SQLite schema for driver app
 - `docs/` — Events taxonomy and policy examples
+- `docs/vision.md` — Product vision and scope
+- `docs/roadmap.md` — Milestones and near‑term technical plan
+- `static/map.*` — Simple dispatcher map UI (Leaflet) served at `/map`
+- `static/driver.*` — Driver app MVP served at `/app` (HOS, routes, events, PoD, nav)
 
 ## Quick Start (Dev)
 
@@ -79,6 +83,13 @@ Optional services included:
   - `RATE_RPS` (default 20), `RATE_BURST` (default 40)
 - Metrics: Prometheus endpoint at `GET /metrics` (Prometheus format)
 
+### Map UI (Dispatcher)
+
+- Open `http://localhost:8080/map` to view a basic map interface.
+  - Shows geofences and lets you add/delete circles (click map with "Add Geofence" enabled).
+  - Lists routes and can subscribe to per-route SSE events (`stop.advanced`, heartbeats).
+  - "Optimize Demo" creates a stub route in memory mode for testing.
+
 Prometheus scrape example (`configs/prometheus.yml.example`):
 
 ```yaml
@@ -110,11 +121,23 @@ MIT — see `LICENSE`.
 
 - Smoke: runs an end-to-end HTTP script on pushes/PRs.
 - Tests: builds and runs `go test ./...` on pushes/PRs to `main`.
+- Lint: checks formatting (gofmt) and runs `go vet`.
+- golangci-lint: runs extended linters (staticcheck, revive, etc.).
 - Releases: tag `v*` builds binaries for Linux/macOS/Windows and uploads to Releases.
 - Docker Publish: tag `v*` builds multi-arch images and pushes to Docker Hub.
 - Postgres Integration (opt-in):
   - Run manually from Actions (workflow_dispatch), or for PRs labeled `pg-integration`, or on tag pushes `v*`.
   - Locally: `go test -tags postgres_integration ./internal/store` with `DATABASE_URL`.
+
+### Branch Protection (recommended)
+
+Require the following checks to pass before merging to `main`:
+- `golangci-lint` — extended linters
+- `Lint` — `gofmt` + `go vet`
+- `Test` — unit tests
+- `Smoke` — end-to-end smoke
+
+Optional additions: `docker-publish` for tags, `postgres-integration` for DB flows.
 
 ## Configuration Reference
 
@@ -151,3 +174,13 @@ Endpoints (stubbed):
 - `/healthz`, `/readyz` — health probes
 
 This is a scaffold, not production-ready. Extend services, storage, auth, and optimization per the design.
+### Driver App (MVP)
+
+- Open `http://localhost:8080/app` (or compose port) for the driver dashboard.
+- Features:
+  - HOS controls (shift/break), driver role headers.
+  - Active routes list (summary) and route details.
+  - Event stream (SSE) per route; manual advance controls.
+  - PoD submission with presigned upload mock.
+  - Navigate to next destination (Apple/Google Maps).
+  - Optional location sharing to stream `driver.location` events.

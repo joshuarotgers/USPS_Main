@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dispatcher Map</title>
+  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="/static/map.css" />
+</head>
+<body>
+  <div id="map"></div>
+  <div class="panel">
+    <div class="row">
+      <label for="tenant">Tenant</label>
+      <input id="tenant" type="text" value="t_demo" placeholder="t_demo" />
+      <button id="btn-refresh">Refresh Geofences</button>
+    </div>
+    <div class="row">
+      <label for="radius">Radius (m)</label>
+      <input id="radius" type="number" min="10" step="10" value="200" />
+      <button id="btn-add">Add Geofence</button>
+    </div>
+    <div class="row">
+      <button id="btn-routes">List Routes</button>
+      <button id="btn-opt">Optimize Demo</button>
+      <button id="btn-test-loc" title="Send a single driver location event">Test Location</button>
+    </div>
+    <div class="row">
+      <button id="btn-sim-toggle" title="Start/Stop route movement simulation">Start Simulation</button>
+      <label class="label-inline" for="sim-interval">Interval</label>
+      <input id="sim-interval" type="number" min="200" step="100" value="1500" />
+      <span>ms</span>
+      <label class="label-inline ml-8" for="sim-mode">Mode</label>
+      <select id="sim-mode" title="Simulation mode">
+        <option value="bounce" selected>Bounce</option>
+        <option value="loop">Loop</option>
+      </select>
+    </div>
+    <div class="row">
+      <label class="label-inline" for="group-toggle">Group Markers</label>
+      <input id="group-toggle" type="checkbox" />
+      <small class="muted">Combine nearby drivers into a single marker</small>
+    </div>
+    <div class="row">
+      <label class="label-inline" for="heat-toggle">Heatmap</label>
+      <input id="heat-toggle" type="checkbox" />
+      <label class="label-inline ml-8" for="recent-sec">Recent ≤</label>
+      <input id="recent-sec" type="number" min="5" step="5" value="60" />
+      <span>sec</span>
+      <small class="muted ml-8">Hide stale positions</small>
+      <button id="btn-reset-filters" class="ml-8">Reset Filters</button>
+    </div>
+    <div class="row legend-row hidden" id="legend">
+      <span class="legend-dot fresh"></span>
+      <span>Fresh</span>
+      <span class="legend-dot recent"></span>
+      <span>Recent</span>
+      <span class="legend-dot older"></span>
+      <span>Older (hidden)</span>
+    </div>
+    <div class="row">
+      <label class="label-inline" for="sim-speed">Speed</label>
+      <input id="sim-speed" type="number" min="1" step="1" value="30" />
+      <span>km/h</span>
+      <label class="label-inline ml-8" for="sim-drivers">Drivers</label>
+      <input id="sim-drivers" type="number" min="1" max="20" step="1" value="1" />
+      <label class="label-inline ml-8" for="sim-jitter">Jitter</label>
+      <input id="sim-jitter" type="checkbox" checked />
+      <input id="sim-jitter-m" type="number" min="0" step="1" value="5" aria-label="Jitter meters" />
+      <span>m</span>
+      <button id="btn-clear-drivers" title="Remove driver markers" class="ml-8">Clear Drivers</button>
+    </div>
+    <div class="section">
+      <div class="section-title">Routes</div>
+      <div id="routes"></div>
+      <div class="row mt-6">
+        <input id="follow" type="checkbox" />
+        <label class="label-inline" for="follow">Follow driver (auto-pan)</label>
+        <label class="label-inline ml-8" for="follow-driver">Driver</label>
+        <select id="follow-driver">
+          <option value="__ANY__">Any</option>
+        </select>
+        <label class="ml-8"><input id="only-route" type="checkbox"/> Only this route</label>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Events</div>
+      <pre id="events" class="events"></pre>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/static/map.js"></script>
+</body>
+</html>

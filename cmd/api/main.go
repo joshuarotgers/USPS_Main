@@ -1,83 +1,96 @@
+// Package main starts the GPSNav HTTP API server.
 package main
 
 import (
-    "fmt"
-    "flag"
-    "log"
-    "log/slog"
-    "net"
-    "net/http"
-    "os"
-    "strconv"
-    "strings"
-    "sync"
-    "time"
+	"flag"
+	"fmt"
+	"log"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 
-    "github.com/google/uuid"
-    "golang.org/x/time/rate"
+	"github.com/google/uuid"
+	"golang.org/x/time/rate"
 
-    "gpsnav/internal/api"
-    "gpsnav/internal/metrics"
-    "github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"gpsnav/internal/api"
+	"gpsnav/internal/metrics"
 )
 
 func main() {
     migrate := flag.Bool("migrate", true, "run DB migrations on startup (Postgres mode)")
+    migrateOnly := flag.Bool("migrate-only", false, "apply DB migrations then exit")
     flag.Parse()
-    if !*migrate { os.Setenv("DB_MIGRATE", "false") }
+    if !*migrate {
+        _ = os.Setenv("DB_MIGRATE", "false")
+    }
     srvDeps, err := api.NewServer()
     if err != nil {
         log.Fatalf("failed to init server: %v", err)
     }
+    if *migrateOnly {
+        log.Printf("migrate-only: DB migrations applied (if Postgres). Exiting.")
+        return
+    }
 
-    mux := http.NewServeMux()
+	mux := http.NewServeMux()
 
-    // Orders
-    mux.HandleFunc("/v1/orders", srvDeps.OrdersHandler)
+	// Orders
+	mux.HandleFunc("/v1/orders", srvDeps.OrdersHandler)
 
-    // Optimization
-    mux.HandleFunc("/v1/optimize", srvDeps.OptimizeHandler)
-    mux.HandleFunc("/v1/optimizer/config", srvDeps.OptimizerConfigHandler)
-    mux.HandleFunc("/v1/admin/optimizer/config", srvDeps.AdminOptimizerConfigHandler)
+	// Optimization
+	mux.HandleFunc("/v1/optimize", srvDeps.OptimizeHandler)
+	mux.HandleFunc("/v1/optimizer/config", srvDeps.OptimizerConfigHandler)
+	mux.HandleFunc("/v1/admin/optimizer/config", srvDeps.AdminOptimizerConfigHandler)
 
-    // Routes
-    mux.HandleFunc("/v1/routes", srvDeps.RoutesIndexHandler)
-    mux.HandleFunc("/v1/routes/", srvDeps.RouteByIDHandler) // includes /assign, /advance, /events/stream
-    mux.HandleFunc("/v1/eta/stream", srvDeps.ETAStreamHandler)
-    
-    // Driver events, PoD, subscriptions
-    mux.HandleFunc("/v1/driver-events", srvDeps.DriverEventsHandler)
-    mux.HandleFunc("/v1/pod", srvDeps.PoDHandler)
-    mux.HandleFunc("/v1/subscriptions", srvDeps.SubscriptionsHandler)
-    mux.HandleFunc("/v1/subscriptions/", srvDeps.SubscriptionByIDHandler)
+	// Routes
+	mux.HandleFunc("/v1/routes", srvDeps.RoutesIndexHandler)
+	mux.HandleFunc("/v1/routes/", srvDeps.RouteByIDHandler) // includes /assign, /advance, /events/stream
+	mux.HandleFunc("/v1/eta/stream", srvDeps.ETAStreamHandler)
 
-    // Drivers
-    mux.HandleFunc("/v1/drivers/", srvDeps.DriversHandler)
+	// Driver events, PoD, subscriptions
+	mux.HandleFunc("/v1/driver-events", srvDeps.DriverEventsHandler)
+	mux.HandleFunc("/v1/pod", srvDeps.PoDHandler)
+	mux.HandleFunc("/v1/subscriptions", srvDeps.SubscriptionsHandler)
+	mux.HandleFunc("/v1/subscriptions/", srvDeps.SubscriptionByIDHandler)
 
-    // Geofences
-    mux.HandleFunc("/v1/geofences", srvDeps.GeofencesHandler)
-    mux.HandleFunc("/v1/geofences/", srvDeps.GeofenceByIDHandler)
+	// Drivers
+	mux.HandleFunc("/v1/drivers/", srvDeps.DriversHandler)
 
-    // Media
-    mux.HandleFunc("/v1/media/presign", srvDeps.MediaPresignHandler)
+	// Geofences
+	mux.HandleFunc("/v1/geofences", srvDeps.GeofencesHandler)
+	mux.HandleFunc("/v1/geofences/", srvDeps.GeofenceByIDHandler)
 
-    // Health
-    mux.HandleFunc("/healthz", srvDeps.HealthHandler)
-    mux.HandleFunc("/readyz", srvDeps.ReadyHandler)
-    // Docs / OpenAPI
-    mux.HandleFunc("/openapi.yaml", srvDeps.OpenAPIHandler)
-    mux.HandleFunc("/docs", srvDeps.DocsHandler)
-    // Static assets (Redoc/Swagger/Driver App)
-    mux.HandleFunc("/static/", srvDeps.StaticHandler)
-    mux.HandleFunc("/app", srvDeps.StaticHandler)
-    mux.HandleFunc("/app/", srvDeps.StaticHandler)
-    // Debug JSON
-    mux.HandleFunc("/debug", srvDeps.DebugJSON)
-    // Root: simple index page with links
-    mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        if r.URL.Path != "/" { http.NotFound(w, r); return }
-        w.Header().Set("Content-Type", "text/html; charset=utf-8")
-        _, _ = w.Write([]byte(`<!DOCTYPE html><html><head><title>GPSNav API</title><meta charset="utf-8"/></head>
+	// Media
+	mux.HandleFunc("/v1/media/presign", srvDeps.MediaPresignHandler)
+
+	// Health
+	mux.HandleFunc("/healthz", srvDeps.HealthHandler)
+	mux.HandleFunc("/readyz", srvDeps.ReadyHandler)
+	// Docs / OpenAPI
+	mux.HandleFunc("/openapi.yaml", srvDeps.OpenAPIHandler)
+	mux.HandleFunc("/docs", srvDeps.DocsHandler)
+	// Static assets (Redoc/Swagger/Driver App)
+	mux.HandleFunc("/static/", srvDeps.StaticHandler)
+	mux.HandleFunc("/app", srvDeps.StaticHandler)
+	mux.HandleFunc("/app/", srvDeps.StaticHandler)
+	mux.HandleFunc("/map", srvDeps.StaticHandler)
+	mux.HandleFunc("/map/", srvDeps.StaticHandler)
+	// Debug JSON
+	mux.HandleFunc("/debug", srvDeps.DebugJSON)
+	// Root: simple index page with links
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(`<!DOCTYPE html><html><head><title>GPSNav API</title><meta charset="utf-8"/></head>
         <body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 2rem;">
         <h1>GPSNav API</h1>
         <ul>
@@ -87,90 +100,95 @@ func main() {
           <li><a href="/metrics">/metrics</a> — Prometheus metrics</li>
           <li><a href="/swagger">/swagger</a> — Interactive API Console</li>
           <li><a href="/app">/app</a> — Driver App</li>
+          <li><a href="/map">/map</a> — Dispatcher Map</li>
         </ul>
         </body></html>`))
-    })
-    // Metrics
-    metrics.RegisterDefault()
-    mux.Handle("/metrics", promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{}))
+	})
+	// Metrics
+	metrics.RegisterDefault()
+	mux.Handle("/metrics", promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{}))
 
-    // Admin
-    mux.HandleFunc("/v1/admin/webhook-deliveries", srvDeps.WebhookDeliveriesHandler)
-    mux.HandleFunc("/v1/admin/webhook-deliveries/", srvDeps.WebhookDeliveryRetryHandler)
-    mux.HandleFunc("/v1/admin/routes/stats", srvDeps.RouteStatsHandler)
-    mux.HandleFunc("/v1/admin/plan-metrics", srvDeps.PlanMetricsHandler)
-    mux.HandleFunc("/v1/admin/plan-metrics/weights", srvDeps.PlanMetricsWeightsHandler)
-    mux.HandleFunc("/v1/admin/webhook-metrics", srvDeps.WebhookMetricsHandler)
-    mux.HandleFunc("/v1/admin/webhook-dlq", srvDeps.WebhookDLQHandler)
-    mux.HandleFunc("/v1/admin/webhook-dlq/", srvDeps.WebhookDLQHandler)
+	// Admin
+	mux.HandleFunc("/v1/admin/webhook-deliveries", srvDeps.WebhookDeliveriesHandler)
+	mux.HandleFunc("/v1/admin/webhook-deliveries/", srvDeps.WebhookDeliveryRetryHandler)
+	mux.HandleFunc("/v1/admin/routes/stats", srvDeps.RouteStatsHandler)
+	mux.HandleFunc("/v1/admin/plan-metrics", srvDeps.PlanMetricsHandler)
+	mux.HandleFunc("/v1/admin/plan-metrics/weights", srvDeps.PlanMetricsWeightsHandler)
+	mux.HandleFunc("/v1/admin/webhook-metrics", srvDeps.WebhookMetricsHandler)
+	mux.HandleFunc("/v1/admin/webhook-dlq", srvDeps.WebhookDLQHandler)
+	mux.HandleFunc("/v1/admin/webhook-dlq/", srvDeps.WebhookDLQHandler)
 
-    // GraphQL subscription bridge (SSE) for route events
-    mux.HandleFunc("/graphql/subscriptions/route-events", func(w http.ResponseWriter, r *http.Request) {
-        // bridge to existing SSE handler: /v1/routes/{routeId}/events/stream
-        id := r.URL.Query().Get("routeId")
-        if id == "" { http.Error(w, "routeId required", http.StatusBadRequest); return }
-        // rewrite path and delegate
-        r.URL.Path = "/v1/routes/" + id + "/events/stream"
-        srvDeps.RouteByIDHandler(w, r)
-    })
+	// GraphQL subscription bridge (SSE) for route events
+	mux.HandleFunc("/graphql/subscriptions/route-events", func(w http.ResponseWriter, r *http.Request) {
+		// bridge to existing SSE handler: /v1/routes/{routeId}/events/stream
+		id := r.URL.Query().Get("routeId")
+		if id == "" {
+			http.Error(w, "routeId required", http.StatusBadRequest)
+			return
+		}
+		// rewrite path and delegate
+		r.URL.Path = "/v1/routes/" + id + "/events/stream"
+		srvDeps.RouteByIDHandler(w, r)
+	})
 
-    // GraphQL WebSocket subscriptions endpoint
-    mux.HandleFunc("/graphql/ws", srvDeps.GraphQLWSHandler)
-    // Minimal GraphQL HTTP endpoint (queries)
-    mux.HandleFunc("/graphql", srvDeps.GraphQLHTTPHandler)
-    // Swagger UI interactive console
-    mux.HandleFunc("/swagger", srvDeps.SwaggerHandler)
+	// GraphQL WebSocket subscriptions endpoint
+	mux.HandleFunc("/graphql/ws", srvDeps.GraphQLWSHandler)
+	// Minimal GraphQL HTTP endpoint (queries)
+	mux.HandleFunc("/graphql", srvDeps.GraphQLHTTPHandler)
+	// Swagger UI interactive console
+	mux.HandleFunc("/swagger", srvDeps.SwaggerHandler)
 
-    addr := ":8080"
-    if v := os.Getenv("PORT"); v != "" {
-        addr = ":" + v
-    }
+	addr := ":8080"
+	if v := os.Getenv("PORT"); v != "" {
+		addr = ":" + v
+	}
 
-    handler := logMiddleware(requestIDMiddleware(corsMiddleware(rateLimitMiddleware(mux))))
-    srv := &http.Server{
-        Addr:              addr,
-        Handler:           handler,
-        ReadHeaderTimeout: 5 * time.Second,
-    }
+	handler := logMiddleware(requestIDMiddleware(corsMiddleware(rateLimitMiddleware(mux))))
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 
-    log.Printf("API listening on %s", addr)
-    // Start webhook worker
-    if srvDeps.Pub != nil {
-        worker := srvDeps.NewWebhookWorker()
-        worker.Start()
-    }
-    if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-        log.Fatalf("server error: %v", err)
-    }
+	log.Printf("API listening on %s", addr)
+	// Start webhook worker
+	if srvDeps.Pub != nil {
+		worker := srvDeps.NewWebhookWorker()
+		worker.Start()
+	}
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("server error: %v", err)
+	}
 }
 
 type statusWriter struct {
-    http.ResponseWriter
-    status int
+	http.ResponseWriter
+	status int
 }
+
 func (w *statusWriter) WriteHeader(code int) { w.status = code; w.ResponseWriter.WriteHeader(code) }
 
 func logMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        start := time.Now()
-        sw := &statusWriter{ResponseWriter: w, status: 200}
-        next.ServeHTTP(sw, r)
-        dur := time.Since(start)
-        rid := r.Header.Get("X-Request-Id")
-        logger := slog.Default()
-        logger.Info("http_request",
-            slog.String("method", r.Method),
-            slog.String("path", r.URL.Path),
-            slog.String("client", clientIP(r)),
-            slog.Int("status", sw.status),
-            slog.String("dur", dur.String()),
-            slog.String("request_id", rid),
-        )
-        // record metrics
-        st := fmt.Sprintf("%d", sw.status)
-        metrics.HTTPRequests.WithLabelValues(r.Method, r.URL.Path, st).Inc()
-        metrics.HTTPDuration.WithLabelValues(r.Method, r.URL.Path, st).Observe(dur.Seconds())
-    })
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		sw := &statusWriter{ResponseWriter: w, status: 200}
+		next.ServeHTTP(sw, r)
+		dur := time.Since(start)
+		rid := r.Header.Get("X-Request-Id")
+		logger := slog.Default()
+		logger.Info("http_request",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.String("client", clientIP(r)),
+			slog.Int("status", sw.status),
+			slog.String("dur", dur.String()),
+			slog.String("request_id", rid),
+		)
+		// record metrics
+		st := fmt.Sprintf("%d", sw.status)
+		metrics.HTTPRequests.WithLabelValues(r.Method, r.URL.Path, st).Inc()
+		metrics.HTTPDuration.WithLabelValues(r.Method, r.URL.Path, st).Observe(dur.Seconds())
+	})
 }
 
 // Helper to satisfy reference and avoid unused imports in stubs
@@ -178,85 +196,108 @@ var _ = fmt.Sprintf
 
 // ---- Request ID middleware ----
 func requestIDMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        rid := r.Header.Get("X-Request-Id")
-        if rid == "" { rid = uuid.New().String() }
-        w.Header().Set("X-Request-Id", rid)
-        // propagate on request for downstream
-        r.Header.Set("X-Request-Id", rid)
-        next.ServeHTTP(w, r)
-    })
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rid := r.Header.Get("X-Request-Id")
+		if rid == "" {
+			rid = uuid.New().String()
+		}
+		w.Header().Set("X-Request-Id", rid)
+		// propagate on request for downstream
+		r.Header.Set("X-Request-Id", rid)
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ---- CORS middleware ----
 func corsMiddleware(next http.Handler) http.Handler {
-    allowed := strings.Split(strings.TrimSpace(os.Getenv("ALLOW_ORIGINS")), ",")
-    allowAll := false
-    m := map[string]struct{}{}
-    for _, o := range allowed {
-        o = strings.TrimSpace(o)
-        if o == "" { continue }
-        if o == "*" { allowAll = true }
-        m[o] = struct{}{}
-    }
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        origin := r.Header.Get("Origin")
-        if allowAll && origin != "" { w.Header().Set("Access-Control-Allow-Origin", origin) }
-        if !allowAll {
-            if _, ok := m[origin]; ok && origin != "" {
-                w.Header().Set("Access-Control-Allow-Origin", origin)
-            }
-        }
-        w.Header().Set("Vary", "Origin")
-        if r.Method == http.MethodOptions {
-            w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
-            w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Request-Id,X-Tenant-Id,X-Role,X-Driver-Id")
-            w.WriteHeader(http.StatusNoContent)
-            return
-        }
-        next.ServeHTTP(w, r)
-    })
+	allowed := strings.Split(strings.TrimSpace(os.Getenv("ALLOW_ORIGINS")), ",")
+	allowAll := false
+	m := map[string]struct{}{}
+	for _, o := range allowed {
+		o = strings.TrimSpace(o)
+		if o == "" {
+			continue
+		}
+		if o == "*" {
+			allowAll = true
+		}
+		m[o] = struct{}{}
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if allowAll && origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+		if !allowAll {
+			if _, ok := m[origin]; ok && origin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+		}
+		w.Header().Set("Vary", "Origin")
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Request-Id,X-Tenant-Id,X-Role,X-Driver-Id")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ---- Rate limit middleware ----
 type rlStore struct {
-    mu sync.Mutex
-    m  map[string]*rate.Limiter
-    r  rate.Limit
-    b  int
+	mu sync.Mutex
+	m  map[string]*rate.Limiter
+	r  rate.Limit
+	b  int
 }
 
-func newRLStore(rps rate.Limit, burst int) *rlStore { return &rlStore{m: map[string]*rate.Limiter{}, r: rps, b: burst} }
+func newRLStore(rps rate.Limit, burst int) *rlStore {
+	return &rlStore{m: map[string]*rate.Limiter{}, r: rps, b: burst}
+}
 func (s *rlStore) limiter(key string) *rate.Limiter {
-    s.mu.Lock(); defer s.mu.Unlock()
-    if lm := s.m[key]; lm != nil { return lm }
-    lm := rate.NewLimiter(s.r, s.b)
-    s.m[key] = lm
-    return lm
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if lm := s.m[key]; lm != nil {
+		return lm
+	}
+	lm := rate.NewLimiter(s.r, s.b)
+	s.m[key] = lm
+	return lm
 }
 
 func rateLimitMiddleware(next http.Handler) http.Handler {
-    rps := 20.0
-    burst := 40
-    if v := os.Getenv("RATE_RPS"); v != "" { if x, err := strconv.ParseFloat(v, 64); err == nil && x > 0 { rps = x } }
-    if v := os.Getenv("RATE_BURST"); v != "" { if x, err := strconv.Atoi(v); err == nil && x > 0 { burst = x } }
-    store := newRLStore(rate.Limit(rps), burst)
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        ip := clientIP(r)
-        if !store.limiter(ip).Allow() {
-            http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
-            return
-        }
-        next.ServeHTTP(w, r)
-    })
+	rps := 20.0
+	burst := 40
+	if v := os.Getenv("RATE_RPS"); v != "" {
+		if x, err := strconv.ParseFloat(v, 64); err == nil && x > 0 {
+			rps = x
+		}
+	}
+	if v := os.Getenv("RATE_BURST"); v != "" {
+		if x, err := strconv.Atoi(v); err == nil && x > 0 {
+			burst = x
+		}
+	}
+	store := newRLStore(rate.Limit(rps), burst)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := clientIP(r)
+		if !store.limiter(ip).Allow() {
+			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func clientIP(r *http.Request) string {
-    if xf := r.Header.Get("X-Forwarded-For"); xf != "" {
-        parts := strings.Split(xf, ",")
-        return strings.TrimSpace(parts[0])
-    }
-    host, _, err := net.SplitHostPort(r.RemoteAddr)
-    if err == nil { return host }
-    return r.RemoteAddr
+	if xf := r.Header.Get("X-Forwarded-For"); xf != "" {
+		parts := strings.Split(xf, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }

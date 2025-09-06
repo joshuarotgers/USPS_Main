@@ -36,6 +36,8 @@ compose_hot() {
     return 0
   fi
   echo "[$(ts)] compose: rebuild api + force-recreate"
+  # Run migrations once (safe to run idempotently)
+  docker compose run --rm migrate >/dev/null 2>&1 || true
   docker compose up -d --build --force-recreate api >/dev/null 2>&1 || true
 }
 

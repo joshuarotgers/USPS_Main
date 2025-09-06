@@ -11,10 +11,6 @@ pre{background:#f3f4f6;border:1px solid #ddd;padding:8px;max-height:240px;overfl
 .card h3{margin:4px 0}
 .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#e2e8f0;margin-right:6px}
 .map{height:280px;border:1px solid #ddd;border-radius:6px;margin-top:8px}
-.ml-8{margin-left:8px}
-.mt-6{margin-top:6px}
-.my-6{margin-top:6px;margin-bottom:6px}
-.hidden{display:none}
 ul.stops{list-style:none;margin:8px 0;padding:0}
 ul.stops li{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px dashed #e5e7eb}
 ul.stops li:last-child{border-bottom:0}
@@ -38,8 +34,16 @@ ul.stops li:last-child{border-bottom:0}
 .banner.show{display:block}
 .help{font-size:12px;color:#6b7280;margin-left:8px}
 .kbd{font-family:monospace;background:#eee;border:1px solid #ddd;border-bottom-width:2px;border-right-width:2px;border-radius:4px;padding:1px 4px}
-.helpbox{display:none;margin-top:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;padding:8px}
-.helpbox.show{display:block}
-.toast.danger{background:#7f1d1d}
 .eta-pulse{animation: etaflash 0.9s ease-out 1}
 @keyframes etaflash{0%{background:#fff}50%{background:#fef9c3}100%{background:#fff}}
+.toast.danger{background:#7f1d1d}
+.helpbox{display:none;margin-top:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;padding:8px}
+.helpbox.show{display:block}
+/* Utilities */
+.ml-8{margin-left:8px}
+.mt-6{margin-top:6px}
+.my-6{margin-top:6px;margin-bottom:6px}
+.hidden{display:none}
+/* Controls */
+#shareInterval{width:60px}
+#btnRetrySSE{margin-left:8px}

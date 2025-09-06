@@ -21,6 +21,8 @@ FROM gcr.io/distroless/static:nonroot
 WORKDIR /app
 ENV PORT=8080
 COPY --from=build /out/api /app/api
+# Include DB migrations for Postgres mode
+COPY --from=build /src/db/migrations /app/db/migrations
 EXPOSE 8080
 USER nonroot:nonroot
 ENTRYPOINT ["/app/api"]

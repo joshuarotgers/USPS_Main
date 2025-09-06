@@ -30,6 +30,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       AUTH_MODE: dev
       WEBHOOK_MAX_ATTEMPTS: "5"
+      DB_MIGRATE: "true"
     depends_on:
       db:
         condition: service_healthy
@@ -84,6 +85,17 @@ services:
     depends_on:
       loki:
         condition: service_started
+
+  migrate:
+    build: .
+    command: ["/app/api", "-migrate-only"]
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres?sslmode=disable
+      DB_MIGRATE: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
 
 volumes:
   db_data: {}

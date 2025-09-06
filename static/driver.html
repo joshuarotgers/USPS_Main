@@ -50,7 +50,6 @@
       <div><span class="kbd">A</span> Arrive, <span class="kbd">D</span> Depart</div>
       <div><span class="kbd">N</span> Navigate, <span class="kbd">F</span> Follow Me, <span class="kbd">L</span> Share Location</div>
     </div>
-    <div id="etaSummary" class="eta-summary" aria-live="polite"></div>
     <div>
       <label for="routeSelect">Select Route</label>
       <label for="reason">Advance reason</label>
@@ -90,17 +89,19 @@
       </label>
     </div>
     <div>
-      <input type="file" id="podFile" accept="image/*" aria-label="PoD file (jpg/png/webp)"/>
+      <input type="file" id="podFile" aria-label="PoD file (jpg/png/webp)" accept="image/*"/>
+      <small>Max 15 MB; allowed: jpg, png, webp.</small>
       <label class="ml-8">Note <input id="podNote" placeholder="optional"/></label>
       <button id="btnPod">Submit PoD</button>
     </div>
     <div id="podErr" class="err" role="alert"></div>
-    <small>Note: Demo uploads call /v1/pod with metadata; presigned upload is mocked.</small>
     <div id="podPreview" class="preview" aria-label="Preview"></div>
+    <small>Note: Demo uploads call /v1/pod with metadata; presigned upload is mocked.</small>
     <pre id="podOut"></pre>
   </section>
   <section id="events">
     <h2>Events</h2>
+    <button id="btnClearEvents">Clear</button>
     <pre id="eventsOut" aria-live="polite" aria-atomic="false"></pre>
   </section>
   <script src="/static/driver.js"></script>

@@ -163,6 +163,77 @@ paths:
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceResponse' } } } }
 
+  /v1/routes/{routeId}/path:
+    get:
+      tags: [Routes]
+      summary: List route path points for mapping
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  points:
+                    type: array
+                    items: { $ref: '#/components/schemas/GeoPoint' }
+
+  /v1/routes/{routeId}/next-destination:
+    get:
+      tags: [Routes]
+      summary: Get next destination coordinates for navigation
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stopId: { type: string }
+                  lat: { type: number }
+                  lng: { type: number }
+
+  /v1/routes/{routeId}/drivers/latest:
+    get:
+      tags: [Routes]
+      summary: Latest driver locations for a route
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tenantId: { type: string }
+                        routeId: { type: string }
+                        driverId: { type: string }
+                        lat: { type: number }
+                        lng: { type: number }
+                        ts: { type: string, format: date-time }
+
   /v1/driver-events:
     post:
       tags: [DriverEvents]
